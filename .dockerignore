@@ -1,0 +1,7 @@
+node_modules
+.next
+.git
+.claude
+*.tsbuildinfo
+TeamBlekingeLF–nyhemsida.html
+docs

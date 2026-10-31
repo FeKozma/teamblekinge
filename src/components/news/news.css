@@ -1,0 +1,102 @@
+/*
+ * Local motion for the news pages and the member home. Same rules as
+ * globals.css: anything that moves on its own is gated on html.motion, so
+ * reduced-motion visitors (and no-JS) get the final state.
+ */
+
+/* Registration progress: the fill runs in from the start line on load, then
+ * follows the count with a transition when someone signs up. `backwards` so
+ * the entrance never blocks the later transition. */
+.nw-bar-fill,
+.nw-bar-runner {
+  transition:
+    width 0.9s var(--ease-sprint),
+    left 0.9s var(--ease-sprint);
+}
+.motion .nw-bar-fill {
+  animation: nw-bar-fill 1.3s var(--ease-sprint) 0.25s backwards;
+}
+.motion .nw-bar-runner {
+  animation: nw-bar-runner 1.3s var(--ease-sprint) 0.25s backwards;
+}
+@keyframes nw-bar-fill {
+  from {
+    width: 0;
+  }
+}
+@keyframes nw-bar-runner {
+  from {
+    left: 0;
+    opacity: 0;
+  }
+}
+
+/* Confirmation tick: swings in like the hero accent. */
+.motion .nw-pop {
+  animation: nw-pop 0.7s var(--ease-sprint) both;
+}
+@keyframes nw-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.4) rotate(-24deg);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.15) rotate(6deg);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+/* Thumb on "Gilla": a quick lean back and up. */
+.motion .nw-thumb {
+  animation: nw-thumb 0.55s var(--ease-sprint);
+}
+@keyframes nw-thumb {
+  40% {
+    transform: translateY(-3px) rotate(-18deg) scale(1.25);
+  }
+}
+
+/* Inline forms unfold under their button, leaning in like a runner.
+ * `backwards`: nothing (no clip-path) is left behind to clip focus outlines. */
+.motion .nw-unfold {
+  animation: nw-unfold 0.55s var(--ease-sprint) backwards;
+}
+@keyframes nw-unfold {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) skewX(4deg);
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* A freshly posted comment glows orange for a moment. */
+.motion .nw-fresh {
+  animation: nw-fresh 2.6s ease-out;
+}
+@keyframes nw-fresh {
+  0%,
+  30% {
+    background-color: var(--color-orange-soft);
+    border-color: var(--color-orange);
+  }
+}
+
+/* Dialogs (Mina aviseringar, + Nyhet) run in from below with a slight tilt. */
+.nw-dialog::backdrop {
+  background: rgb(34 30 31 / 0.55);
+}
+.motion .nw-dialog[open] {
+  animation: nw-dialog-in 0.5s var(--ease-sprint) both;
+}
+@keyframes nw-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(48px) rotate(-1.5deg);
+  }
+}

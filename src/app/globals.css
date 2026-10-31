@@ -1,0 +1,599 @@
+@import "tailwindcss";
+
+/*
+ * Team Blekinge design tokens — taken from the drawups in docs/design/.
+ * Ink + orange carry the brand (straight from the logo), purple is the
+ * secondary accent, paper is the page background.
+ */
+@theme {
+  --color-ink: #221e1f;
+  --color-ink-2: #3a3435;
+  --color-ink-3: #2c2728;
+  --color-orange: #ee8915;
+  --color-orange-dark: #a85400;
+  --color-orange-deep: #7a3d00;
+  --color-orange-soft: #fdebd5;
+  --color-purple: #5b2a86;
+  --color-purple-soft: #efe7f6;
+  --color-paper: #f4f2f0;
+  --color-line: #e4e0dc;
+  --color-muted: #5f5754;
+  --color-mist: #e7e2df;
+  --color-green: #2f6b3b;
+
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+
+  /* A sprinter's start: fast out of the blocks, long glide to the line. */
+  --ease-sprint: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-stride: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* Element defaults live in the base layer so Tailwind utilities (text-white
+ * etc.) always win over them. */
+@layer base {
+  /* Cards waiting to run in from the right sit past the edge. Clipping on html
+   * too keeps body's clip on body itself instead of being handed to the
+   * viewport, which phones still let you pan sideways. */
+  html {
+    overflow-x: clip;
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.5;
+    overflow-x: clip;
+  }
+
+  a {
+    color: var(--color-orange-dark);
+  }
+  a:hover {
+    color: var(--color-orange-deep);
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-orange);
+    outline-offset: 2px;
+  }
+
+  summary {
+    cursor: pointer;
+  }
+}
+
+/* ───────────────────────── Buttons ───────────────────────── */
+
+@layer components {
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 18px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 15px;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      translate 0.25s var(--ease-sprint),
+      background-color 0.2s,
+      color 0.2s,
+      box-shadow 0.25s var(--ease-sprint);
+  }
+  .btn:hover {
+    translate: 0 -2px;
+  }
+  .btn:active {
+    translate: 0 0;
+  }
+  .btn-lg {
+    min-height: 52px;
+    padding: 0 26px;
+    font-size: 17px;
+    border-radius: 10px;
+  }
+  .btn-primary {
+    background: var(--color-orange);
+    color: var(--color-ink);
+  }
+  .btn-primary:hover {
+    color: var(--color-ink);
+    box-shadow: 0 8px 18px -6px rgb(238 137 21 / 0.7);
+  }
+  .btn-dark {
+    background: var(--color-ink);
+    color: #fff;
+  }
+  .btn-dark:hover {
+    color: #fff;
+    box-shadow: 0 8px 18px -8px rgb(34 30 31 / 0.6);
+  }
+  .btn-outline {
+    border: 1.5px solid var(--color-line);
+    background: #fff;
+    color: var(--color-ink);
+  }
+  .btn-outline:hover {
+    color: var(--color-ink);
+    border-color: var(--color-ink);
+  }
+  .btn-outline-light {
+    border: 1.5px solid #fff;
+    color: #fff;
+  }
+  .btn-outline-light:hover {
+    color: var(--color-ink);
+    background: #fff;
+  }
+
+  /* Arrow links ("Alla nyheter →"): the arrow takes a step forward on hover. */
+  .arrow-link {
+    font-weight: 600;
+    font-size: 15px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .arrow-link .arrow {
+    display: inline-block;
+    transition: translate 0.3s var(--ease-sprint);
+  }
+  .arrow-link:hover .arrow {
+    translate: 4px 0;
+  }
+
+  .card {
+    background: #fff;
+    border: 1px solid var(--color-line);
+    border-radius: 12px;
+  }
+
+  /* The skewed accent bar used in front of section headings. */
+  .skew-bar {
+    display: inline-block;
+    flex: none;
+    width: 30px;
+    height: 16px;
+    transform: skewX(-28deg);
+    transform-origin: left center;
+  }
+}
+
+/* ───────────────────────── Motion ─────────────────────────
+ * Everything below is gated on the `motion` class, which an inline script in
+ * the root layout sets only when the visitor has not asked for reduced motion.
+ * Without it (or without JS) every element simply renders in its final state.
+ */
+
+/* Reveal on scroll: elements sprint in from the left with a slight lean, then
+ * straighten up — like a runner coming into frame. RevealObserver toggles
+ * .is-in when the element enters the viewport. */
+.motion [data-reveal] {
+  transition:
+    opacity 0.7s var(--ease-sprint),
+    translate 0.9s var(--ease-sprint),
+    transform 0.9s var(--ease-sprint);
+  transition-delay: calc(var(--reveal-i, 0) * 90ms);
+}
+.motion [data-reveal]:not(.is-in) {
+  opacity: 0;
+  translate: -48px 0;
+}
+.motion [data-reveal="up"]:not(.is-in) {
+  translate: 0 40px;
+}
+.motion [data-reveal="right"]:not(.is-in) {
+  translate: 48px 0;
+}
+.motion [data-reveal="lean"]:not(.is-in) {
+  transform: skewX(10deg);
+}
+
+/* Skew bars on headings sprint out from zero width. */
+.motion [data-reveal] .skew-bar,
+.motion .skew-bar[data-reveal] {
+  transition: scale 0.8s var(--ease-sprint) 0.15s;
+}
+.motion [data-reveal]:not(.is-in) .skew-bar {
+  scale: 0 1;
+}
+
+/* Cards that come to rest: start more tilted and lower, then settle into their
+ * designed tilt (--rest-rotate). */
+[data-settle] {
+  rotate: var(--rest-rotate, 0deg);
+}
+.motion [data-settle] {
+  transition:
+    opacity 0.8s var(--ease-sprint),
+    translate 1.1s var(--ease-sprint),
+    rotate 1.1s var(--ease-sprint),
+    box-shadow 0.5s var(--ease-sprint);
+  transition-delay: calc(var(--reveal-i, 0) * 120ms);
+}
+.motion [data-settle]:not(.is-in) {
+  opacity: 0;
+  translate: 0 90px;
+  rotate: calc(var(--rest-rotate, 0deg) - 8deg);
+}
+/* Straighten immediately on hover, without the entrance stagger. */
+.motion [data-settle]:hover {
+  transition-delay: 0s;
+}
+
+/* Speed lines: faint diagonal tracks with bright streaks running along them. */
+/* pathLength is 1470; the dash period is twice that, so each streak runs the
+ * length of its line and then rests off-path for a moment before the next. */
+.speed-streak {
+  stroke-dasharray: 110 2830;
+  stroke-dashoffset: 2940;
+  opacity: 0;
+}
+.motion .speed-streak {
+  opacity: 1;
+  animation: streak var(--streak-dur, 3.2s) linear infinite;
+  animation-delay: var(--streak-delay, 0s);
+}
+@keyframes streak {
+  from {
+    stroke-dashoffset: 2940;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Headline words: lean in, then stand up straight. */
+.motion span.run-in {
+  display: inline-block;
+}
+.motion .run-in {
+  animation: run-in 0.9s var(--ease-sprint) both;
+  animation-delay: calc(var(--i, 0) * 80ms + 0.15s);
+}
+@keyframes run-in {
+  from {
+    opacity: 0;
+    transform: translateX(-60px) skewX(14deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* "alla typer": swings into its tilted resting pose (set by its rotate/translate
+ * utilities) with a little overshoot. The keyframes are relative to that pose. */
+.motion .tilt-pop {
+  animation: tilt-pop 1s var(--ease-sprint) 0.55s both;
+}
+@keyframes tilt-pop {
+  0% {
+    opacity: 0;
+    transform: rotate(-11deg) translateY(26px) scale(0.85);
+  }
+  60% {
+    opacity: 1;
+    transform: rotate(4deg) translateY(-2px) scale(1.04);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+/* Hero photo: wipes in along its diagonal while the orange plate trails behind. */
+.motion .hero-photo {
+  animation: photo-wipe 1.1s var(--ease-sprint) 0.2s both;
+}
+@keyframes photo-wipe {
+  from {
+    clip-path: polygon(12% 0, 12% 0, 0 100%, 0 100%);
+  }
+  to {
+    clip-path: polygon(12% 0, 100% 0, 88% 100%, 0 100%);
+  }
+}
+.motion .hero-plate {
+  animation: plate-in 1.2s var(--ease-sprint) 0.45s both;
+}
+@keyframes plate-in {
+  from {
+    opacity: 0;
+    transform: translate(-60px, -22px);
+  }
+}
+
+/* Logo runners: on load they take off one after another, like the start of a race. */
+.motion .logo-runner {
+  animation: logo-runner 0.7s var(--ease-sprint) both;
+  animation-delay: calc(var(--i, 0) * 140ms + 0.1s);
+}
+@keyframes logo-runner {
+  from {
+    opacity: 0;
+    transform: translateX(-24px) skewX(18deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.logo-link:hover .logo-runner {
+  animation: logo-hop 0.5s var(--ease-stride);
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+@keyframes logo-hop {
+  50% {
+    transform: translate(3px, -3px) skewX(-6deg);
+  }
+}
+
+/* Drifting diagonal stripes for orange bands (Aktuellt, Bli medlem). */
+.stripes-drift {
+  background-image: repeating-linear-gradient(
+    -62deg,
+    rgb(34 30 31 / 0.07) 0 2px,
+    transparent 2px 22px
+  );
+  background-size: 200px 100%;
+}
+.motion .stripes-drift {
+  animation: stripes 6s linear infinite;
+}
+@keyframes stripes {
+  to {
+    background-position: 200px 0;
+  }
+}
+
+/* Partner logos roll past like the field in a race. */
+.marquee {
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+.marquee-track {
+  display: flex;
+  width: max-content;
+}
+.motion .marquee-track {
+  animation: marquee 38s linear infinite;
+}
+.marquee:hover .marquee-track {
+  animation-play-state: paused;
+}
+@keyframes marquee {
+  to {
+    translate: -50% 0;
+  }
+}
+
+/* Gentle "breathing" pulse for live dots (I DAG, nytt sedan sist). */
+.motion .live-dot {
+  animation: live 1.8s ease-in-out infinite;
+}
+@keyframes live {
+  50% {
+    box-shadow: 0 0 0 6px rgb(238 137 21 / 0);
+  }
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(238 137 21 / 0.55);
+  }
+}
+
+/* Hover leans: cards tip forward slightly, the way a runner leans into a stride. */
+.lean-hover {
+  transition:
+    translate 0.35s var(--ease-sprint),
+    rotate 0.35s var(--ease-sprint),
+    box-shadow 0.35s var(--ease-sprint);
+}
+.lean-hover:hover {
+  translate: 0 -4px;
+  box-shadow: 0 16px 30px -12px rgb(34 30 31 / 0.25);
+}
+.straighten-hover {
+  transition:
+    rotate 0.5s var(--ease-sprint),
+    translate 0.5s var(--ease-sprint),
+    box-shadow 0.5s var(--ease-sprint);
+}
+.straighten-hover:hover {
+  rotate: 0deg !important;
+  translate: 0 -8px;
+}
+
+/* Images with a diagonal edge: the edge slides on hover. */
+.diag-img {
+  clip-path: polygon(0 0, 100% 0, 86% 100%, 0 100%);
+  transition:
+    clip-path 0.6s var(--ease-sprint),
+    scale 0.6s var(--ease-sprint);
+}
+.group:hover .diag-img {
+  clip-path: polygon(0 0, 100% 0, 96% 100%, 0 100%);
+}
+
+/* FAQ: smooth open/close where supported. */
+:root {
+  interpolate-size: allow-keywords;
+}
+details.faq::details-content {
+  height: 0;
+  overflow: clip;
+  transition:
+    height 0.4s var(--ease-sprint),
+    content-visibility 0.4s allow-discrete;
+}
+details.faq[open]::details-content {
+  height: auto;
+}
+details.faq summary {
+  list-style: none;
+}
+details.faq summary::-webkit-details-marker {
+  display: none;
+}
+details.faq .chev {
+  transition: rotate 0.4s var(--ease-sprint);
+}
+details.faq[open] .chev {
+  rotate: 90deg;
+}
+
+/* Scroll-linked effects — progressive enhancement (Chromium, Safari 26+). */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: scroll()) {
+    /* The runner along the top of the page: scrolling is running. */
+    .scroll-track {
+      display: block;
+    }
+    .scroll-track-fill {
+      animation: track-fill linear both;
+      animation-timeline: scroll(root);
+    }
+    .scroll-track-runner {
+      animation: track-runner linear both;
+      animation-timeline: scroll(root);
+    }
+
+    /* Parallax drift for photos in tilted frames. */
+    .parallax {
+      animation: parallax linear both;
+      animation-timeline: view();
+    }
+  }
+}
+.scroll-track {
+  display: none;
+}
+@keyframes track-fill {
+  from {
+    scale: 0 1;
+  }
+  to {
+    scale: 1 1;
+  }
+}
+@keyframes track-runner {
+  from {
+    left: 0%;
+  }
+  to {
+    left: calc(100% - 17px);
+  }
+}
+@keyframes parallax {
+  from {
+    translate: 0 28px;
+  }
+  to {
+    translate: 0 -28px;
+  }
+}
+
+/* ─────────────── Page transitions (React <ViewTransition>) ───────────────
+ * The outgoing page leans forward and runs off to the left; the new one
+ * runs in from the right and straightens up. The header stays put. */
+::view-transition {
+  pointer-events: none;
+}
+::view-transition-old(.run-page) {
+  animation:
+    160ms ease-in both vt-fade reverse,
+    360ms var(--ease-stride) both vt-run-out;
+}
+::view-transition-new(.run-page) {
+  animation:
+    260ms ease-out 120ms both vt-fade,
+    520ms var(--ease-sprint) both vt-run-in;
+}
+@keyframes vt-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes vt-run-out {
+  to {
+    transform: translateX(-70px) skewX(6deg);
+  }
+}
+@keyframes vt-run-in {
+  from {
+    transform: translateX(70px) skewX(-6deg);
+  }
+}
+/* The active-nav underline slides to its new tab instead of jumping. */
+::view-transition-group(nav-indicator) {
+  animation-duration: 450ms;
+  animation-timing-function: var(--ease-sprint);
+}
+::view-transition-group(site-header),
+::view-transition-group(tab-bar) {
+  animation: none;
+  z-index: 100;
+}
+::view-transition-old(site-header),
+::view-transition-old(tab-bar) {
+  display: none;
+}
+::view-transition-new(site-header),
+::view-transition-new(tab-bar) {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* The bell gives a little shake when there is something new. */
+@keyframes bell {
+  0%,
+  40%,
+  100% {
+    rotate: 0deg;
+  }
+  8% {
+    rotate: 16deg;
+  }
+  16% {
+    rotate: -14deg;
+  }
+  24% {
+    rotate: 8deg;
+  }
+  32% {
+    rotate: -6deg;
+  }
+}
+
+/* Login: the envelope flies in when the magic link is "sent". */
+.motion .mail-fly {
+  animation: mail-fly 0.9s var(--ease-sprint) both;
+}
+@keyframes mail-fly {
+  from {
+    opacity: 0;
+    transform: translate(-80px, 30px) rotate(-18deg) skewX(12deg);
+  }
+  60% {
+    opacity: 1;
+    transform: translate(6px, -4px) rotate(4deg);
+  }
+  to {
+    transform: none;
+  }
+}

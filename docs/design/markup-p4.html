@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="sv"><head>
+<meta charset="utf-8">
+<title>Logga in – Team Blekinge LF</title>
+<script src="53ceed47-a5de-4c33-b7fe-45628d5f6ae0"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+
+<style>
+body{margin:0}
+a{color:#A85400}a:hover{color:#7A3D00}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; overflow: hidden; background: #F4F2F0; color: #221E1F; font-family: Inter, system-ui, sans-serif; font-size: 16px; line-height: 1.5; display: flex; flex-direction: column">
+
+  <header style="background: #221E1F; padding: 20px 16px 28px; display: flex; flex-direction: column; align-items: center; gap: 4px">
+    <img src="c84f3e56-5c70-473c-a200-cbd221b3772d" alt="Team Blekinge Löparförening" style="width: 100%; max-width: 340px; height: auto">
+  </header>
+
+  <main style="flex: 1 1 auto; padding: 24px 16px; display: flex; flex-direction: column; gap: 18px">
+    <sc-if value="{{ notSent }}" hint-placeholder-val="{{ true }}">
+      <div style="display: flex; flex-direction: column; gap: 18px">
+        <div>
+          <h1 style="margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px">Logga in</h1>
+          <p style="margin: 6px 0 0; color: #5F5754; font-size: 15px">Skriv din e-postadress så skickar vi en inloggningslänk. Inget lösenord behövs.</p>
+        </div>
+        <label style="display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-size: 14px">E-postadress
+          <input type="email" autocomplete="email" placeholder="namn@exempel.se" style="min-height: 52px; padding: 0 14px; border: 1.5px solid #CFC8C4; border-radius: 10px; font: inherit; font-size: 17px; font-weight: 400; color: #221E1F; background: #FFFFFF; box-sizing: border-box">
+        </label>
+        <button type="button" sc-camel-on-click="{{ send }}" style="min-height: 52px; border: none; border-radius: 10px; background: #EE8915; color: #221E1F; font: inherit; font-size: 17px; font-weight: 800; cursor: pointer">Skicka inloggningslänk</button>
+        <div style="display: flex; align-items: center; gap: 12px; color: #5F5754; font-size: 13px"><span style="flex: 1 1 auto; height: 1px; background: #CFC8C4"></span>eller<span style="flex: 1 1 auto; height: 1px; background: #CFC8C4"></span></div>
+        <button type="button" style="min-height: 52px; border: 1.5px solid #221E1F; border-radius: 10px; background: #FFFFFF; color: #221E1F; font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px">
+          <svg aria-hidden="true" width="20" height="20" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"></circle><path d="M11 12l9-9M17 6l3 3M15 8l2 2"></path></svg>
+          Logga in med passkey
+        </button>
+        <p style="margin: 0; font-size: 13px; color: #5F5754; text-align: center">Med en passkey loggar du in med Face ID, fingeravtryck eller telefonens kod.</p>
+      </div>
+    </sc-if>
+    <sc-if value="{{ sent }}" hint-placeholder-val="{{ false }}">
+      <div style="display: flex; flex-direction: column; gap: 16px; align-items: flex-start">
+        <span style="width: 64px; height: 64px; border-radius: 50%; background: #FDEBD6; display: flex; align-items: center; justify-content: center">
+          <svg aria-hidden="true" width="30" height="30" sc-camel-view-box="0 0 24 24" fill="none" stroke="#A85400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 7l9 6 9-6"></path></svg>
+        </span>
+        <h1 style="margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px">Kolla din mejl</h1>
+        <p style="margin: 0; color: #5F5754; font-size: 15px">Vi har skickat en inloggningslänk. Öppna mejlet på den här telefonen och tryck på länken. Den gäller i 15 minuter.</p>
+        <p style="margin: 0; color: #5F5754; font-size: 15px">Inget mejl? Titta i skräpposten, eller kontrollera att du använder samma adress som i medlemsregistret.</p>
+        <button type="button" sc-camel-on-click="{{ back }}" style="min-height: 48px; padding: 0 18px; border: 1.5px solid #CFC8C4; border-radius: 10px; background: #FFFFFF; color: #221E1F; font: inherit; font-weight: 600; cursor: pointer">Skicka igen eller byt adress</button>
+      </div>
+    </sc-if>
+
+    <section style="background: #FFFFFF; border: 1px solid #E4E0DC; border-radius: 12px; padding: 14px 16px; display: flex; gap: 12px; align-items: flex-start">
+      <svg aria-hidden="true" width="22" height="22" sc-camel-view-box="0 0 24 24" fill="none" stroke="#5B2A86" stroke-width="2" stroke-linecap="round" style="flex: none; margin-top: 2px"><circle cx="12" cy="12" r="9"></circle><path d="M12 8h.01M11 12h1v5h1"></path></svg>
+      <p style="margin: 0; font-size: 14px; color: #221E1F"><strong>Första gången på nya hemsidan?</strong> Alla medlemmar får en inbjudan via mejl. Ditt gamla SvenskaLag-konto behövs inte längre.</p>
+    </section>
+
+    <p style="margin: auto 0 0; font-size: 15px; text-align: center; color: #5F5754">Inte medlem än? <a href="#" style="font-weight: 700">Prova på gratis</a> eller <a href="#" style="font-weight: 700">bli medlem</a>.</p>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { sent: false };
+  }
+  renderVals() {
+    return {
+      sent: this.state.sent,
+      notSent: !this.state.sent,
+      send: () => this.setState({ sent: true }),
+      back: () => this.setState({ sent: false })
+    };
+  }
+}
+</script>
+
+
+</body></html>

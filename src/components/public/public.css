@@ -1,0 +1,256 @@
+/*
+ * Motion for the public info pages (Träna med oss, Tävla, Föreningen, Bli
+ * medlem, Frågor). Same contract as globals.css: everything that moves is
+ * gated on `html.motion`, so with reduced motion or without JS every element
+ * renders in its final state. Theme colours come from globals.css; the
+ * fallbacks cover variables Tailwind prunes when no utility uses them.
+ */
+
+/* ── Lines that sprint out when their [data-reveal] parent comes into view ── */
+.grow-x {
+  transform-origin: left center;
+}
+.grow-y {
+  transform-origin: center top;
+}
+.motion [data-reveal] .grow-x,
+.motion [data-reveal] .grow-y {
+  transition: scale 1.6s var(--ease-sprint) 0.25s;
+}
+.motion [data-reveal]:not(.is-in) .grow-x {
+  scale: 0 1;
+}
+.motion [data-reveal]:not(.is-in) .grow-y {
+  scale: 1 0;
+}
+
+/* Stations along a track pop up one after another (stagger with --pop-i). */
+.motion [data-reveal] .pop-in {
+  transition:
+    opacity 0.5s var(--ease-sprint),
+    scale 0.7s var(--ease-sprint);
+  transition-delay: calc(var(--pop-i, 0) * 130ms + 0.35s);
+}
+.motion [data-reveal]:not(.is-in) .pop-in {
+  opacity: 0;
+  scale: 0.3;
+}
+
+/* The runner on a track runs from the start line to where it stands
+ * (inline `left` / `top`) as the track is revealed. */
+.motion [data-reveal] .run-to-x {
+  transition: left 1.6s var(--ease-sprint) 0.25s;
+}
+.motion [data-reveal]:not(.is-in) .run-to-x {
+  left: 0 !important;
+}
+.motion [data-reveal] .run-to-y {
+  transition: top 1.6s var(--ease-sprint) 0.25s;
+}
+.motion [data-reveal]:not(.is-in) .run-to-y {
+  top: 0 !important;
+}
+
+/* Running on the spot: a small bounce in the stride. */
+.motion .stride {
+  animation: stride 0.42s var(--ease-stride) infinite alternate;
+}
+@keyframes stride {
+  from {
+    translate: 0 0;
+  }
+  to {
+    translate: 0 -3px;
+  }
+}
+
+/* ── Föreningen: the timeline is a running track you run down by scrolling ──
+ * Where scroll-driven animations exist, the orange lane fills and the runner
+ * follows the middle of the viewport. Elsewhere the lane simply sprints out
+ * on reveal (.grow-y) and the runner waits at the finish. */
+.tl-track {
+  view-timeline-name: --club-timeline;
+}
+.tl-runner {
+  top: 100%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .motion .tl-fill {
+      animation: tl-fill linear both;
+      animation-timeline: --club-timeline;
+      animation-range: entry 50% exit 50%;
+    }
+    .motion .tl-runner {
+      animation: tl-runner linear both;
+      animation-timeline: --club-timeline;
+      animation-range: entry 50% exit 50%;
+    }
+  }
+}
+@keyframes tl-fill {
+  from {
+    scale: 1 0;
+  }
+  to {
+    scale: 1 1;
+  }
+}
+@keyframes tl-runner {
+  from {
+    top: 0%;
+  }
+  to {
+    top: 100%;
+  }
+}
+
+/* ── Bli medlem: the baton is handed along the four steps, over and over ── */
+.relay-baton {
+  left: 0;
+  top: 0;
+}
+.motion .relay-baton {
+  animation: baton-x 8s var(--ease-stride) infinite;
+}
+@media (max-width: 767px) {
+  .motion .relay-baton {
+    animation-name: baton-y;
+  }
+}
+@keyframes baton-x {
+  0%,
+  12% {
+    left: 0%;
+    opacity: 1;
+  }
+  25%,
+  37% {
+    left: 33.333%;
+  }
+  50%,
+  62% {
+    left: 66.667%;
+  }
+  75%,
+  92% {
+    left: 100%;
+    opacity: 1;
+  }
+  96% {
+    left: 100%;
+    opacity: 0;
+  }
+  97% {
+    left: 0%;
+    opacity: 0;
+  }
+  100% {
+    left: 0%;
+    opacity: 1;
+  }
+}
+@keyframes baton-y {
+  0%,
+  12% {
+    top: 0%;
+    opacity: 1;
+  }
+  25%,
+  37% {
+    top: 33.333%;
+  }
+  50%,
+  62% {
+    top: 66.667%;
+  }
+  75%,
+  92% {
+    top: 100%;
+    opacity: 1;
+  }
+  96% {
+    top: 100%;
+    opacity: 0;
+  }
+  97% {
+    top: 0%;
+    opacity: 0;
+  }
+  100% {
+    top: 0%;
+    opacity: 1;
+  }
+}
+/* Each step's number lights up as the baton reaches it (delay = step × 2s). */
+.motion .relay-mark {
+  animation: relay-mark 8s var(--ease-sprint) infinite;
+  animation-delay: calc(var(--leg, 0) * 2s);
+}
+@keyframes relay-mark {
+  0% {
+    scale: 1;
+    box-shadow: 0 0 0 0 rgb(238 137 21 / 0.6);
+  }
+  4% {
+    scale: 1.14;
+    box-shadow: 0 0 0 10px rgb(238 137 21 / 0);
+  }
+  12%,
+  100% {
+    scale: 1;
+    box-shadow: 0 0 0 0 rgb(238 137 21 / 0);
+  }
+}
+
+/* ── Parkering: the walk from the car to the door, as marching dashes ── */
+.motion .march {
+  animation: march 1.4s linear infinite;
+}
+@keyframes march {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+.motion .pin-bob {
+  animation: pin-bob 1.6s var(--ease-stride) infinite alternate;
+}
+@keyframes pin-bob {
+  to {
+    translate: 0 -6px;
+  }
+}
+
+/* ── Åka och tävla: the club bus drives in, then idles ── */
+.motion [data-reveal] .drive-in {
+  transition: translate 1.8s var(--ease-sprint) 0.2s;
+}
+.motion [data-reveal]:not(.is-in) .drive-in {
+  translate: -70vw 0;
+}
+.motion .idle {
+  animation: idle 0.36s steps(2) infinite;
+}
+@keyframes idle {
+  to {
+    translate: 0 -1px;
+  }
+}
+
+/* ── Forms: the "sent" check swings in (thank-you states) ── */
+.motion .check-pop {
+  animation: check-pop 0.8s var(--ease-sprint) both;
+}
+@keyframes check-pop {
+  from {
+    opacity: 0;
+    transform: rotate(-25deg) scale(0.4);
+  }
+  60% {
+    opacity: 1;
+    transform: rotate(6deg) scale(1.08);
+  }
+  to {
+    transform: none;
+  }
+}

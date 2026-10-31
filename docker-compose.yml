@@ -1,0 +1,9 @@
+services:
+  web:
+    build: .
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Stockholm
+    ports:
+      # 3016 was the next free app port (../tunnel/add-subdomain.sh --free).
+      - "127.0.0.1:${WEB_PORT:-3016}:3000"

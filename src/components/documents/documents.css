@@ -1,0 +1,48 @@
+/*
+ * Motion for the document pages and the admin (toasts, fake PDF pages).
+ * Gated on `html.motion` like everything in globals.css; the fallbacks on the
+ * custom properties keep this file independent of which theme variables
+ * Tailwind decides to emit.
+ */
+
+/* Toasts sprint in from the right with a lean, and slip out the same way. */
+.motion .doc-toast {
+  animation: doc-toast-in 0.55s var(--ease-sprint, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+.motion .doc-toast[data-leaving] {
+  animation: doc-toast-out 0.3s ease-in both;
+}
+@keyframes doc-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(48px) skewX(-10deg);
+  }
+}
+@keyframes doc-toast-out {
+  to {
+    opacity: 0;
+    transform: translateX(48px) skewX(-6deg);
+  }
+}
+
+/* The page behind the fake PDF fans out a little further on hover. */
+.pdf-stack .pdf-back {
+  transition:
+    rotate 0.6s var(--ease-sprint, cubic-bezier(0.16, 1, 0.3, 1)),
+    translate 0.6s var(--ease-sprint, cubic-bezier(0.16, 1, 0.3, 1));
+}
+.pdf-stack:hover .pdf-back {
+  rotate: 6deg;
+  translate: 14px 6px;
+}
+
+/* "Kopierad!" — the check pops in. */
+.motion .copied-pop {
+  animation: copied-pop 0.4s var(--ease-sprint, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+@keyframes copied-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6) rotate(-20deg);
+  }
+}

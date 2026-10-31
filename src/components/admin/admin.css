@@ -1,0 +1,50 @@
+/*
+ * Admin-only motion, gated on `html.motion` like globals.css. Without it the
+ * freshly uploaded row simply sits there with its highlight.
+ */
+
+/* A freshly uploaded protocol sprints into the top of the table. */
+.row-fresh {
+  background-color: #fdebd5;
+}
+.motion .row-fresh {
+  animation:
+    row-fresh-in 0.8s var(--ease-sprint, cubic-bezier(0.16, 1, 0.3, 1)) both,
+    row-fresh-glow 2.6s ease-out 0.6s both;
+}
+@keyframes row-fresh-in {
+  from {
+    opacity: 0;
+    transform: translateX(-40px) skewX(10deg);
+  }
+}
+@keyframes row-fresh-glow {
+  from {
+    background-color: #fdebd5;
+  }
+  to {
+    background-color: #fff7ee;
+  }
+}
+
+/* The dropzone leans forward a little while a file hovers over it. */
+.dropzone {
+  transition:
+    transform 0.35s var(--ease-sprint, cubic-bezier(0.16, 1, 0.3, 1)),
+    background-color 0.2s,
+    border-color 0.2s;
+}
+.motion .dropzone[data-dragging] {
+  transform: skewX(-3deg) scale(1.015);
+}
+
+/* The chosen file's glyph drops in tilted and settles. */
+.motion .file-drop-in {
+  animation: file-drop-in 0.6s var(--ease-sprint, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+@keyframes file-drop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-18px) rotate(-14deg);
+  }
+}

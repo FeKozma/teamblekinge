@@ -1,0 +1,98 @@
+/*
+ * Klubbflödet motion. Gated on `html.motion` like the toolkit in globals.css,
+ * so with reduced motion (or no JS) everything simply appears in place.
+ * Theme variables carry fallbacks: Tailwind only emits the ones it sees used.
+ */
+
+/* A freshly published post drops in leaning forward, then straightens up. */
+.motion .feed-new {
+  animation: feed-new 0.85s var(--ease-sprint, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+@keyframes feed-new {
+  from {
+    opacity: 0;
+    transform: translate(-56px, -20px) skewX(10deg) rotate(-1.5deg);
+  }
+  60% {
+    opacity: 1;
+    transform: translate(4px, 0) skewX(-2deg);
+  }
+  to {
+    transform: none;
+  }
+}
+
+/* "Jag hänger med": your avatar hops into the row of runners. */
+.motion .hop-in {
+  animation: hop-in 0.65s var(--ease-sprint, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+@keyframes hop-in {
+  0% {
+    opacity: 0;
+    transform: translate(-18px, 0) scale(0.4);
+  }
+  45% {
+    opacity: 1;
+    transform: translate(-3px, -12px) scale(1.08);
+  }
+  75% {
+    transform: translate(0, 1px) scale(1.06, 0.94);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+/* The join button takes a quick stride when pressed. */
+.motion .stride {
+  animation: stride 0.45s var(--ease-stride, cubic-bezier(0.65, 0, 0.35, 1));
+}
+@keyframes stride {
+  40% {
+    transform: translateX(3px) skewX(-10deg);
+  }
+}
+
+/* Thumbs-up pops and tips over when you like something. */
+.motion .like-pop {
+  animation: like-pop 0.5s var(--ease-sprint, cubic-bezier(0.16, 1, 0.3, 1));
+}
+@keyframes like-pop {
+  40% {
+    transform: scale(1.4) rotate(-16deg);
+  }
+}
+
+/* Comments and composer fields run in from the left. */
+.motion .slide-in {
+  animation: slide-in 0.55s var(--ease-sprint, cubic-bezier(0.16, 1, 0.3, 1)) both;
+  animation-delay: calc(var(--i, 0) * 50ms);
+}
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-24px) skewX(8deg);
+  }
+}
+
+/* The pin on the "Viktigt i Nyheter" banner swings on hover. */
+.motion .group:hover .pin-swing {
+  animation: pin-swing 0.7s var(--ease-stride, cubic-bezier(0.65, 0, 0.35, 1));
+  transform-origin: 50% 10%;
+}
+@keyframes pin-swing {
+  30% {
+    rotate: 18deg;
+  }
+  65% {
+    rotate: -10deg;
+  }
+}
+
+/* Mobile filter chips: hide the scrollbar, keep the swipe. */
+.chip-row {
+  scrollbar-width: none;
+}
+.chip-row::-webkit-scrollbar {
+  display: none;
+}
