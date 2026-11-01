@@ -31,7 +31,6 @@ export const storeKeys = {
   follow: (slug: string, me: string) => `news:follow:${slug}:${me}`,
   homeSeen: (me: string) => `home:seen:${me}`,
   notify: (me: string) => `news:notify:${me}`,
-  drafts: "news:drafts",
 };
 
 // DEMO: members start out signed up as vägvakt at Jämjöhalvan, as in the
