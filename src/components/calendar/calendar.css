@@ -41,3 +41,14 @@
     transform: skewX(-10deg) translateX(2px);
   }
 }
+
+/* "Inställt" lands like a stamp. */
+.motion .cal-off {
+  animation: cal-off 0.5s var(--ease-sprint, cubic-bezier(0.16, 1, 0.3, 1)) 0.35s both;
+}
+@keyframes cal-off {
+  from {
+    opacity: 0;
+    transform: scale(1.6) rotate(-8deg);
+  }
+}

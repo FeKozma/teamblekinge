@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Article } from "@/components/news/Article";
 import { Page } from "@/components/ui";
 import { getNews } from "@/lib/content/news";
+import { getPageTexts } from "@/lib/content/pages";
 import { todayISO } from "@/lib/format";
 import { getSession } from "@/lib/session";
 
@@ -15,10 +16,10 @@ export async function generateMetadata({ params }: PageProps<"/nyheter/[slug]">)
 export default async function NewsItemPage({ params }: PageProps<"/nyheter/[slug]">) {
   const n = await getNews((await params).slug);
   if (!n) notFound();
-  const user = await getSession();
+  const [user, t] = await Promise.all([getSession(), getPageTexts("nyheter")]);
   return (
     <Page>
-      <Article n={n} user={user} today={todayISO()} />
+      <Article n={n} user={user} today={todayISO()} t={t} />
     </Page>
   );
 }

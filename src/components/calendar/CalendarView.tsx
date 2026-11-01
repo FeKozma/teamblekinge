@@ -2,9 +2,9 @@
 
 import "./calendar.css";
 import Link from "next/link";
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { basePost, runEvent, useMyPosts, useRunJoiners } from "@/components/feed/feed-store";
-import { IconLock, IconMapPin } from "@/components/icons";
+import { IconLock, IconMapPin, IconPencil } from "@/components/icons";
 import { DateBadge, Pill, SectionHeading } from "@/components/ui";
 import { eventKindLabel, type ClubEvent, type EventKind } from "@/lib/data/events";
 import type { FeedPost } from "@/lib/data/feed";
@@ -27,6 +27,19 @@ const PAGE_DAYS = 10;
 
 const isLocked = (e: ClubEvent) => !!e.membersOnly || e.source === "flode";
 
+function subscribeHash(onChange: () => void) {
+  window.addEventListener("hashchange", onChange);
+  return () => window.removeEventListener("hashchange", onChange);
+}
+/** The day in the URL's #dag-YYYY-MM-DD, if any. */
+const hashDate = () => /^#dag-(\d{4}-\d{2}-\d{2})$/.exec(window.location.hash)?.[1] ?? null;
+
+/** Where the board edits an event; löprundor belong to their poster in Klubbflödet. */
+function adminHref(e: ClubEvent) {
+  if (e.source === "flode") return null;
+  return e.series ? `/admin/kalender/aterkommande/${e.series}?datum=${e.date}` : `/admin/kalender/${e.id}`;
+}
+
 /**
  * Two-week strip, kind filters and the agenda (grouped by month and day).
  * Filtering is client-side. Members also see löprundor they've posted in
@@ -37,13 +50,16 @@ export function CalendarView({
   today,
   member,
   me,
+  editable = false,
   aside,
 }: {
-  /** Upcoming events this visitor may see. */
+  /** Upcoming events this visitor may see, cancelled ones included. */
   events: ClubEvent[];
   today: string;
   member: boolean;
   me: string | null;
+  /** Board members get an edit link on each event. */
+  editable?: boolean;
   aside: ReactNode;
 }) {
   const [myPosts] = useMyPosts();
@@ -64,8 +80,17 @@ export function CalendarView({
   const dayKeys = [...byDay.keys()];
   const stripEnd = addDays(today, STRIP_DAYS - 1);
   // Always render every day the strip links to, then page through the rest.
-  const shownDays = dayKeys.slice(0, Math.max(limit, dayKeys.filter((d) => d <= stripEnd).length));
+  // …and, arriving at #dag-… (e.g. "Visa i kalendern" from the admin), up to that day.
+  const hashDay = useSyncExternalStore(subscribeHash, hashDate, () => null);
+  const shownDays = dayKeys.slice(
+    0,
+    Math.max(limit, dayKeys.filter((d) => d <= stripEnd).length, hashDay ? dayKeys.indexOf(hashDay) + 1 : 0),
+  );
   const hiddenCount = dayKeys.slice(shownDays.length).reduce((n, d) => n + byDay.get(d)!.length, 0);
+
+  useEffect(() => {
+    if (hashDay) document.getElementById(`dag-${hashDay}`)?.scrollIntoView();
+  }, [hashDay]);
 
   const months: { key: string; days: string[] }[] = [];
   for (const d of shownDays) {
@@ -175,6 +200,7 @@ export function CalendarView({
                         today={today}
                         items={byDay.get(d)!}
                         me={me}
+                        editable={editable}
                         findPost={findPost}
                       />
                     ))}
@@ -239,7 +265,11 @@ function StripDay({
             <span
               key={e.id}
               className={`cal-dot h-[7px] w-[7px] rounded-full ${quick ? "cal-dot-now" : ""} ${
-                isToday && e.kind === "traning" ? "bg-white" : kindStyle[e.kind].dot
+                e.cancelled
+                  ? "border-[1.5px] border-current opacity-50"
+                  : isToday && e.kind === "traning"
+                    ? "bg-white"
+                    : kindStyle[e.kind].dot
               }`}
               style={{ "--i": i + j * 0.5 } as CSSProperties}
             />
@@ -325,6 +355,7 @@ function AgendaDay({
   today,
   items,
   me,
+  editable,
   findPost,
 }: {
   date: string;
@@ -332,6 +363,7 @@ function AgendaDay({
   today: string;
   items: ClubEvent[];
   me: string | null;
+  editable: boolean;
   findPost: (id: string) => FeedPost | undefined;
 }) {
   const isToday = date === today;
@@ -345,7 +377,7 @@ function AgendaDay({
     >
       <div className="mb-2.5 flex items-center gap-3 md:sticky md:top-24 md:mb-0 md:self-start md:pt-1">
         <span className={`flex-none rounded-lg ${isToday ? "live-dot" : ""}`}>
-          <DateBadge date={date} today={today} highlight={items.some((e) => e.kind === "lopp")} />
+          <DateBadge date={date} today={today} highlight={items.some((e) => e.kind === "lopp" && !e.cancelled)} />
         </span>
         <span className="flex flex-col leading-tight">
           <span className="font-bold">{dow.charAt(0).toUpperCase() + dow.slice(1)}</span>
@@ -354,14 +386,31 @@ function AgendaDay({
       </div>
       <ul className="card m-0 list-none divide-y divide-line overflow-hidden p-0">
         {items.map((e) => (
-          <EventRow key={e.id} e={e} me={me} post={e.post ? findPost(e.post) : undefined} />
+          <EventRow
+            key={e.id}
+            e={e}
+            me={me}
+            edit={editable ? adminHref(e) : null}
+            post={e.post ? findPost(e.post) : undefined}
+          />
         ))}
       </ul>
     </li>
   );
 }
 
-function EventRow({ e, me, post }: { e: ClubEvent; me: string | null; post?: FeedPost }) {
+function EventRow({
+  e,
+  me,
+  edit,
+  post,
+}: {
+  e: ClubEvent;
+  me: string | null;
+  /** Admin link for board members. */
+  edit: string | null;
+  post?: FeedPost;
+}) {
   const s = kindStyle[e.kind];
   const pill = (className: string) => (
     <Pill tone={s.pill} className={className}>
@@ -370,16 +419,36 @@ function EventRow({ e, me, post }: { e: ClubEvent; me: string | null; post?: Fee
     </Pill>
   );
   const note = e.note && e.note !== eventKindLabel[e.kind] ? e.note : null;
+  const off = !!e.cancelled;
   return (
-    <li className="group relative flex items-start gap-3 px-4 py-3.5 transition-colors hover:bg-paper/70 md:gap-4 md:px-5">
-      <span className="w-[46px] flex-none pt-px text-[15px] font-extrabold tabular-nums">{e.time}</span>
+    <li
+      className={`group relative flex items-start gap-3 px-4 py-3.5 transition-colors hover:bg-paper/70 md:gap-4 md:px-5 ${
+        off ? "bg-paper/50" : ""
+      }`}
+    >
+      <span
+        className={`w-[46px] flex-none pt-px text-[15px] font-extrabold tabular-nums ${off ? "text-muted line-through" : ""}`}
+      >
+        {e.time}
+      </span>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-          <h3 className="m-0 text-[16px] leading-snug font-bold md:text-[17px]">
+          {off && (
+            <span className="cal-off self-center bg-ink px-2 py-0.5 text-[11px] font-extrabold tracking-[1px] text-orange uppercase [rotate:-2deg]">
+              Inställt
+            </span>
+          )}
+          <h3
+            className={`m-0 text-[16px] leading-snug font-bold md:text-[17px] ${
+              off ? "text-muted line-through decoration-2" : ""
+            }`}
+          >
             {e.href ? (
               <Link
                 href={e.href}
-                className="text-ink no-underline after:absolute after:inset-0 after:content-[''] hover:text-ink group-hover:underline"
+                className={`no-underline after:absolute after:inset-0 after:content-[''] group-hover:underline ${
+                  off ? "text-muted hover:text-muted" : "text-ink hover:text-ink"
+                }`}
               >
                 {e.title}
               </Link>
@@ -398,7 +467,9 @@ function EventRow({ e, me, post }: { e: ClubEvent; me: string | null; post?: Fee
           <IconMapPin size={14} className="flex-none" />
           {e.place}
         </span>
-        {post?.run && me ? (
+        {off ? (
+          e.cancelReason && <span className="text-[14px] font-semibold text-ink">{e.cancelReason}</span>
+        ) : post?.run && me ? (
           <RunNote post={post} me={me} />
         ) : (
           note && <span className="text-[14px] text-muted">{note}</span>
@@ -414,6 +485,17 @@ function EventRow({ e, me, post }: { e: ClubEvent; me: string | null; post?: Fee
         >
           →
         </span>
+      )}
+      {edit && (
+        // Above the row's stretched link.
+        <Link
+          href={edit}
+          title="Ändra i administrationen"
+          className="relative z-10 -my-1 flex h-9 w-9 flex-none -skew-x-[12deg] items-center justify-center self-center rounded-md border border-line bg-white text-muted transition-colors hover:border-ink hover:bg-ink hover:text-white"
+        >
+          <IconPencil size={16} className="skew-x-[12deg]" />
+          <span className="sr-only">Ändra {e.title}</span>
+        </Link>
       )}
     </li>
   );

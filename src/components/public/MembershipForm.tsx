@@ -3,16 +3,29 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { IconCheck } from "@/components/icons";
-import { club } from "@/lib/data/club";
 import { DemoNote } from "./DemoNote";
 
-const groups = [
-  { id: "langa", label: "Långa gruppen", hint: "Tisdagar 18:00, ca 10 km" },
-  { id: "korta", label: "Korta gruppen", hint: "Tisdagar 18:00, ca 5 km" },
-  { id: "halsa", label: "Hälsagruppen", hint: "Tisdagar 17:45, inga krav" },
-  { id: "torsdag", label: "Torsdagsgruppen", hint: "Torsdagar 10:00, 60+ eller dagledig" },
-  { id: "vet-ej", label: "Vet inte än", hint: "Vi hjälper dig att välja" },
-];
+const groupIds = ["langa", "korta", "halsa", "torsdag", "vet-ej"] as const;
+
+/** The form's texts, edited by the board under Sidtexter › Bli medlem. */
+export type MembershipFormTexts = {
+  name: string;
+  email: string;
+  emailExample: string;
+  phone: string;
+  optional: string;
+  groupQuestion: string;
+  groups: Record<(typeof groupIds)[number], { label: string; hint: string }>;
+  submit: string;
+  thanks: string;
+  thanksBeforeFee: string;
+  thanksBeforeSwish: string;
+  thanksBeforeBankgiro: string;
+  /** Added for Torsdagsgruppen; "" to end the sentence there. */
+  thanksThursday: string;
+  planButton: string;
+  again: string;
+};
 
 export const inputClass =
   "h-[52px] w-full rounded-xl border border-line bg-white px-4 text-[17px] font-normal outline-none transition-shadow focus:border-orange focus:ring-4 focus:ring-orange/25";
@@ -22,7 +35,17 @@ export const inputClass =
  * only swaps in a thank-you state. Deliberately no personnummer — the real
  * form decides what the club actually needs.
  */
-export function MembershipForm() {
+export function MembershipForm({
+  fee,
+  swish,
+  bankgiro,
+  texts: tx,
+}: {
+  fee: number;
+  swish: string;
+  bankgiro: string;
+  texts: MembershipFormTexts;
+}) {
   const [sent, setSent] = useState<{ firstName: string; group: string } | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
@@ -37,20 +60,20 @@ export function MembershipForm() {
           <IconCheck size={34} strokeWidth={3} />
         </span>
         <h3 ref={headingRef} tabIndex={-1} className="m-0 text-[24px] font-extrabold outline-none">
-          Tack{sent.firstName ? `, ${sent.firstName}` : ""}!
+          {tx.thanks}
+          {sent.firstName ? `, ${sent.firstName}` : ""}!
         </h3>
         <DemoNote>Det här är en demo – ingen ansökan har skickats och inget har sparats.</DemoNote>
         <p className="m-0 text-[16px]">
-          På riktigt går ansökan till föreningen. När den är godkänd betalar du {club.fee} kr med Swish {club.swish}{" "}
-          eller bankgiro {club.bankgiro}
-          {sent.group === "Torsdagsgruppen" ? " – i Torsdagsgruppen ingår medlemskapet i årets avgift." : "."}
+          {tx.thanksBeforeFee} {fee} kr {tx.thanksBeforeSwish} {swish} {tx.thanksBeforeBankgiro} {bankgiro}
+          {sent.group === "torsdag" && tx.thanksThursday ? ` ${tx.thanksThursday}` : "."}
         </p>
         <div className="flex flex-wrap gap-3">
           <Link href="/trana-med-oss#terminsplan" className="btn btn-primary">
-            Se terminsplanen
+            {tx.planButton}
           </Link>
           <button type="button" onClick={() => setSent(null)} className="btn btn-outline">
-            Fyll i igen
+            {tx.again}
           </button>
         </div>
       </div>
@@ -64,52 +87,51 @@ export function MembershipForm() {
         e.preventDefault();
         const data = new FormData(e.currentTarget);
         const name = String(data.get("name") ?? "").trim();
-        const group = groups.find((g) => g.id === data.get("group"))?.label ?? "";
-        setSent({ firstName: name.split(/\s+/)[0] ?? "", group });
+        setSent({ firstName: name.split(/\s+/)[0] ?? "", group: String(data.get("group") ?? "") });
       }}
     >
       <DemoNote>Inget skickas – formuläret visar bara hur ansökan kommer att fungera.</DemoNote>
       <label className="flex flex-col gap-2 font-semibold">
-        Namn
+        {tx.name}
         <input name="name" required autoComplete="name" className={inputClass} />
       </label>
       <div className="grid gap-5 sm:grid-cols-2">
         <label className="flex flex-col gap-2 font-semibold">
-          E-post
-          <input name="email" type="email" required autoComplete="email" placeholder="namn@exempel.se" className={inputClass} />
+          {tx.email}
+          <input name="email" type="email" required autoComplete="email" placeholder={tx.emailExample} className={inputClass} />
         </label>
         <label className="flex flex-col gap-2 font-semibold">
           <span>
-            Telefon <span className="font-normal text-muted">(valfritt)</span>
+            {tx.phone} <span className="font-normal text-muted">{tx.optional}</span>
           </span>
           <input name="phone" type="tel" autoComplete="tel" className={inputClass} />
         </label>
       </div>
       <fieldset className="m-0 flex flex-col gap-2.5 border-0 p-0">
-        <legend className="mb-2 p-0 font-semibold">Vilken grupp vill du träna i?</legend>
+        <legend className="mb-2 p-0 font-semibold">{tx.groupQuestion}</legend>
         <div className="grid gap-2.5 sm:grid-cols-2">
-          {groups.map((g, i) => (
+          {groupIds.map((id, i) => (
             <label
-              key={g.id}
+              key={id}
               className="flex min-h-[56px] cursor-pointer items-center gap-3 rounded-xl border border-line bg-white px-4 py-2.5 transition-[border-color,background-color,rotate] duration-300 has-[:checked]:border-orange has-[:checked]:bg-orange-soft has-[:checked]:[rotate:-1deg] has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-orange/40"
             >
               <input
                 type="radio"
                 name="group"
-                value={g.id}
-                defaultChecked={i === groups.length - 1}
+                value={id}
+                defaultChecked={i === groupIds.length - 1}
                 className="h-5 w-5 flex-none accent-orange-dark"
               />
               <span className="flex flex-col leading-tight">
-                <span className="font-bold">{g.label}</span>
-                <span className="text-[13px] text-muted">{g.hint}</span>
+                <span className="font-bold">{tx.groups[id].label}</span>
+                <span className="text-[13px] text-muted">{tx.groups[id].hint}</span>
               </span>
             </label>
           ))}
         </div>
       </fieldset>
       <button type="submit" className="btn btn-primary btn-lg self-start">
-        Skicka ansökan
+        {tx.submit}
       </button>
     </form>
   );

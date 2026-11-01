@@ -32,6 +32,20 @@ export function longDate(iso: string) {
   return `${weekdays[dow]} ${d} ${monthsLong[m - 1]}`;
 }
 
+/** "18 januari 1992" */
+export function fullDate(iso: string) {
+  const { y, m, d } = parts(iso);
+  return `${d} ${monthsLong[m - 1]} ${y}`;
+}
+
+/** "18 januari 1992" → "1992-01-18"; "" when it isn't such a date. */
+export function parseFullDate(text: string) {
+  const match = /^(\d{1,2})\s+([a-zåäö]+)\s+(\d{4})$/i.exec(text.trim());
+  const m = match ? monthsLong.indexOf(match[2].toLowerCase()) + 1 : 0;
+  if (!match || !m) return "";
+  return `${match[3]}-${String(m).padStart(2, "0")}-${match[1].padStart(2, "0")}`;
+}
+
 export function weekday(iso: string) {
   return weekdays[parts(iso).dow];
 }

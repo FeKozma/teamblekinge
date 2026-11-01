@@ -98,7 +98,10 @@ export function AdminSidebar() {
           Återställ demons klick
         </button>
         <span className="mt-1 px-3 text-[12px] leading-snug text-muted">
-          Demo: allt du gör syns bara för dig och försvinner när du stänger webbläsaren.
+          Demo: allt du gör syns bara för dig och försvinner när du stänger webbläsaren.{" "}
+          <Link href="/om-demon" className="text-muted underline underline-offset-2 hover:text-ink">
+            Så fungerar det på riktigt
+          </Link>
         </span>
       </nav>
 

@@ -86,6 +86,46 @@ export function FileGlyph({ ext = "PDF", size = 44 }: { ext?: string; size?: num
   );
 }
 
+/**
+ * The document as an object — a big sheet with a folded corner, leaning on a
+ * second sheet — where a page preview used to be. `locked` adds the padlock
+ * for content behind the login.
+ */
+export function BigFileGlyph({
+  label,
+  locked = false,
+  className = "",
+}: {
+  /** Small caps at the top, e.g. "Protokoll". */
+  label?: string;
+  locked?: boolean;
+  className?: string;
+}) {
+  return (
+    <span aria-hidden="true" className={`relative block aspect-[1/1.28] w-full ${className}`}>
+      <span className="absolute inset-0 translate-x-3 translate-y-2 rotate-[5deg] rounded-[12px] border border-line bg-[#fbfaf9] transition-[rotate,translate] duration-500 ease-[var(--ease-sprint)] group-hover:translate-x-4 group-hover:rotate-[8deg]" />
+      <span className="absolute inset-0 [filter:drop-shadow(0_20px_26px_rgba(34,30,31,0.22))]">
+        <span className="relative flex h-full flex-col overflow-hidden rounded-[12px] bg-white px-[13%] pt-[14%] pb-[16%] [clip-path:polygon(0_0,calc(100%-22%)_0,100%_17%,100%_100%,0_100%)]">
+          <span className="absolute top-0 right-0 aspect-square w-[22%] rounded-bl-[10px] bg-[linear-gradient(225deg,transparent_50%,#e9e4e0_50%)]" />
+          {label && (
+            <span className="text-[13px] font-extrabold tracking-[1.2px] text-muted uppercase">{label}</span>
+          )}
+          <span className="mt-3 block h-2 w-14 -skew-x-[28deg] bg-orange" />
+          <span className="mt-auto text-[clamp(44px,13vw,68px)] leading-none font-extrabold tracking-[-2px] text-orange-dark">
+            PDF
+          </span>
+          <span className="absolute inset-x-0 bottom-0 h-3 bg-[repeating-linear-gradient(-62deg,#ee8915_0_7px,transparent_7px_14px)] opacity-80" />
+        </span>
+      </span>
+      {locked && (
+        <span className="tilt-pop absolute top-1/2 left-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 -rotate-6 items-center justify-center rounded-xl bg-orange text-ink shadow-[0_14px_30px_rgba(0,0,0,0.4)]">
+          <IconLock size={30} strokeWidth={2.2} />
+        </span>
+      )}
+    </span>
+  );
+}
+
 /** File extension from a name, for the glyph. */
 export function extOf(fileName: string) {
   const m = /\.([a-z0-9]{2,4})$/i.exec(fileName);

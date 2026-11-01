@@ -376,7 +376,10 @@ function FunktionarBox({ slug, reg, today, followedByMe, me }: BoxProps) {
             </>
           }
         >
-          <p className="m-0">{reg.dateLabel} · Alla funktionärer bjuds på lunch efter loppet.</p>
+          <p className="m-0">
+            {reg.dateLabel}
+            {reg.hint && ` · ${reg.hint}`}
+          </p>
         </Done>
       ) : null}
 
@@ -432,6 +435,7 @@ function FunktionarBox({ slug, reg, today, followedByMe, me }: BoxProps) {
               </button>
             )}
           </div>
+          {!signup && reg.hint && <p className="m-0 text-center text-[13px] text-muted">{reg.hint}</p>}
         </form>
       )}
       <p role="status" className="sr-only">

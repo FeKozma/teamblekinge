@@ -8,7 +8,7 @@ export type RelayStep = { title: string; text: ReactNode };
  * Four equal columns from md, four equal rows on phones — the baton's
  * keyframes assume evenly spaced stations, so the grid has no gaps.
  */
-export function RelaySteps({ steps }: { steps: RelayStep[] }) {
+export function RelaySteps({ steps, legLabel = "Sträcka" }: { steps: RelayStep[]; legLabel?: string }) {
   return (
     <div className="relative">
       {/* Rail + baton between the first and last number */}
@@ -24,7 +24,7 @@ export function RelaySteps({ steps }: { steps: RelayStep[] }) {
       <ol className="relative m-0 grid list-none auto-rows-fr p-0 md:grid-cols-4 md:auto-rows-auto">
         {steps.map((s, i) => (
           <li
-            key={s.title}
+            key={i}
             data-reveal={i % 2 ? "up" : ""}
             style={{ "--reveal-i": i } as CSSProperties}
             className="flex items-center gap-4 py-2.5 md:flex-col md:items-center md:gap-4 md:px-3 md:py-0 md:text-center"
@@ -40,7 +40,7 @@ export function RelaySteps({ steps }: { steps: RelayStep[] }) {
               style={{ rotate: `${[-1.2, 0.8, -0.6, 1.2][i % 4]}deg` }}
             >
               <span className="text-[12px] font-extrabold tracking-[1px] text-orange-dark uppercase">
-                Sträcka {i + 1}
+                {legLabel} {i + 1}
               </span>
               <h3 className="m-0 text-[20px] leading-tight font-extrabold">{s.title}</h3>
               <div className="text-[15px] text-muted">{s.text}</div>

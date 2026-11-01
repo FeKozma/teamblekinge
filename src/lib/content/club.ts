@@ -3,17 +3,19 @@ import {
   board2026,
   club,
   faqs,
+  history,
   otherRoles,
   partners,
   type BoardMember,
   type Club,
   type Faq,
+  type Milestone,
   type Partner,
   type RoleGroup,
 } from "@/lib/data/club";
 import { readCollection, writeCollection } from "./store";
 
-// The association's facts, people, FAQs and sponsors, as edited by the board.
+// The association's facts, people, FAQs, history and sponsors, as edited by the board.
 
 export const getClub = () => readCollection<Club>("club", () => club);
 export const saveClub = (v: Club) => writeCollection("club", v);
@@ -29,3 +31,6 @@ export const saveFaqs = (v: Faq[]) => writeCollection("faqs", v);
 
 export const getPartners = () => readCollection<Partner[]>("partners", () => partners);
 export const savePartners = (v: Partner[]) => writeCollection("partners", v);
+
+export const getHistory = () => readCollection<Milestone[]>("history", () => history);
+export const saveHistory = (v: Milestone[]) => writeCollection("history", v);

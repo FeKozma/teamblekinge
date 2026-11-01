@@ -1,10 +1,13 @@
 import { getEvents } from "@/lib/content/events";
+import { getPageTexts } from "@/lib/content/pages";
 import { eventKindLabel, isPublicEvent, type ClubEvent } from "@/lib/data/events";
 
 // Subscribable iCalendar feed (RFC 5545) of the club's public events — what a
 // guest sees in /kalender. Members-only events and löprundor from Klubbflödet
 // stay out: a subscription URL can't be tied to a login. The data has start
 // times only, so events carry no DTEND (allowed: they then end where they start).
+// Cancelled sessions stay in with STATUS:CANCELLED, so subscribers' calendars
+// show them called off instead of silently dropping them.
 
 const TZID = "Europe/Stockholm";
 
@@ -58,7 +61,11 @@ function fold(line: string) {
 
 function vevent(e: ClubEvent, origin: string, stamp: string) {
   const start = `${e.date.replaceAll("-", "")}T${e.time.replace(":", "")}00`;
-  const description = [e.note && e.note !== eventKindLabel[e.kind] ? e.note : null, eventKindLabel[e.kind]]
+  const description = [
+    e.cancelled ? ["Inställt", e.cancelReason].filter(Boolean).join(": ") : null,
+    e.note && e.note !== eventKindLabel[e.kind] ? e.note : null,
+    eventKindLabel[e.kind],
+  ]
     .filter(Boolean)
     .join(" · ");
   return [
@@ -66,7 +73,9 @@ function vevent(e: ClubEvent, origin: string, stamp: string) {
     `UID:${e.id}@teamblekinge.nu`,
     `DTSTAMP:${stamp}`,
     `DTSTART;TZID=${TZID}:${start}`,
-    `SUMMARY:${esc(e.title)}`,
+    // Not every calendar app shows the status, so the title says it too.
+    `SUMMARY:${esc(e.cancelled ? `Inställt: ${e.title}` : e.title)}`,
+    ...(e.cancelled ? ["STATUS:CANCELLED"] : []),
     `LOCATION:${esc(e.place)}`,
     `DESCRIPTION:${esc(description)}`,
     `CATEGORIES:${esc(eventKindLabel[e.kind])}`,
@@ -85,7 +94,7 @@ function publicOrigin(request: Request) {
 }
 
 export async function GET(request: Request) {
-  const events = await getEvents();
+  const [events, t] = await Promise.all([getEvents({ cancelled: true }), getPageTexts("kalender")]);
   const origin = publicOrigin(request);
   // DTSTAMP is UTC: 20261031T081500Z
   const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
@@ -96,7 +105,7 @@ export async function GET(request: Request) {
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "X-WR-CALNAME:Team Blekinge LF",
-    `X-WR-CALDESC:${esc("Träningar, egna lopp, möten och resor – Team Blekinge Löparförening, Karlskrona.")}`,
+    `X-WR-CALDESC:${esc(t("ics.description"))}`,
     `X-WR-TIMEZONE:${TZID}`,
     "REFRESH-INTERVAL;VALUE=DURATION:PT12H",
     "X-PUBLISHED-TTL:PT12H",
@@ -108,7 +117,8 @@ export async function GET(request: Request) {
     headers: {
       "content-type": "text/calendar; charset=utf-8",
       "content-disposition": 'inline; filename="team-blekinge.ics"',
-      "cache-control": "public, max-age=3600",
+      // Board edits should reach the next fetch; calendar apps poll on their own schedule anyway.
+      "cache-control": "private, no-cache",
     },
   });
 }

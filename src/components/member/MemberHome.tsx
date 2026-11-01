@@ -19,6 +19,7 @@ import { feed, feedKindLabel } from "@/lib/data/feed";
 import { commentCount, type NewsItem } from "@/lib/data/news";
 import { people, type DemoUser } from "@/lib/data/users";
 import { longDate, nextTuesday, relativeDay } from "@/lib/format";
+import { isUploadUrl } from "@/lib/uploads";
 import { FreshCount, FreshList, type FreshItem } from "./FreshList";
 import { MySignups, type SignupSource } from "./MySignups";
 
@@ -180,6 +181,7 @@ function FeaturedCard({ n, today }: { n: NewsItem; today: string }) {
             fill
             priority
             sizes="(min-width: 768px) 360px, 100vw"
+            unoptimized={isUploadUrl(n.image)}
             className="object-cover transition-[clip-path,scale] duration-700 ease-sprint [clip-path:polygon(0_0,100%_0,100%_78%,0_100%)] group-hover:scale-105 md:[clip-path:polygon(0_0,100%_0,86%_100%,0_100%)] md:group-hover:[clip-path:polygon(0_0,100%_0,96%_100%,0_100%)]"
             style={{ objectPosition: n.imagePosition ?? "50% 20%" }}
           />

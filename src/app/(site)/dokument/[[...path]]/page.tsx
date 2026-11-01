@@ -1,7 +1,6 @@
 import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { DemoPathFallback, DemoUploadFolders, DemoUploadRows } from "@/components/documents/DemoUploads";
 import { Toaster } from "@/components/documents/Toaster";
 import {
   DocRow,
@@ -10,21 +9,26 @@ import {
   FolderView,
   LoginGate,
   MembersHint,
+  UploadButton,
   type FolderCardData,
 } from "@/components/documents/views";
 import { Page, PageHero, SectionHeading } from "@/components/ui";
+import { getArchive } from "@/lib/content/documents";
+import { getNews } from "@/lib/content/news";
+import { getPageTexts } from "@/lib/content/pages";
 import {
   canSee,
   crumbsFor,
   documentsIn,
   effectiveVisibility,
   folderHref,
+  kindLabels,
   latestDocuments,
   listFolder,
   resolveDocumentPath,
-  rootFolder,
   uploadLabel,
   viewerOf,
+  type DocArchive,
   type DocFile,
   type Viewer,
 } from "@/lib/data/documents";
@@ -32,11 +36,9 @@ import { getSession } from "@/lib/session";
 
 type Props = PageProps<"/dokument/[[...path]]">;
 
-const withEffective = (d: DocFile) => ({ ...d, effective: effectiveVisibility(d) });
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { path = [] } = await params;
-  const r = resolveDocumentPath(path);
+  const r = resolveDocumentPath(await getArchive(), path);
   if (!r || !path.length) return { title: "Dokument" };
   const viewer = viewerOf(await getSession());
   const name = r.kind === "document" ? r.doc.title : r.folder.title;
@@ -49,25 +51,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function DocumentsPage({ params }: Props) {
   const { path = [] } = await params;
-  const viewer = viewerOf(await getSession());
-  const here = folderHref(path);
-  const loginHref = `/logga-in?next=${here}`;
-  const r = resolveDocumentPath(path);
+  const [archive, user] = await Promise.all([getArchive(), getSession()]);
+  const viewer = viewerOf(user);
+  const loginHref = `/logga-in?next=${folderHref(path)}`;
+  const r = resolveDocumentPath(archive, path);
+  if (!r) notFound();
 
-  if (!r) {
-    // Unknown on the server, but it may be a protocol uploaded in the admin
-    // demo (only this browser knows) — let the client have a look.
-    if (rootFolder.folders?.some((f) => f.slug === path[0])) {
-      return (
-        <Page>
-          <DemoPathFallback segments={path} viewer={viewer} />
-          <Toaster aboveTabBar />
-        </Page>
-      );
-    }
-    notFound();
-  }
-
+  const withEffective = (d: DocFile) => ({ ...d, effective: effectiveVisibility(archive.root, d) });
   const titles = r.trail.map((f) => f.title);
   const folderPath = r.kind === "document" ? r.doc.folder : r.path;
 
@@ -84,8 +74,7 @@ export default async function DocumentsPage({ params }: Props) {
           title={title}
           what={r.kind === "document" ? "dokument" : "mapp"}
           boardOnly={boardOnly}
-          kind={r.kind === "document" ? r.doc.kind : "protokoll"}
-          pages={r.kind === "document" ? r.doc.pages : 3}
+          label={r.kind === "document" ? kindLabels[r.doc.kind] : undefined}
           loginHref={loginHref}
         />
       </Page>
@@ -93,10 +82,12 @@ export default async function DocumentsPage({ params }: Props) {
   }
 
   if (r.kind === "document") {
-    const siblings = documentsIn(r.doc.folder)
-      .filter((d) => d.id !== r.doc.id && canSee(effectiveVisibility(d), viewer))
+    const siblings = documentsIn(archive.docs, r.doc.folder)
+      .filter((d) => d.id !== r.doc.id && canSee(effectiveVisibility(archive.root, d), viewer))
       .slice(0, 4)
       .map(withEffective);
+    const newsSlug = r.doc.announced?.newsSlug;
+    const news = newsSlug ? await getNews(newsSlug) : undefined;
     return (
       <Page>
         <DocumentView
@@ -106,13 +97,14 @@ export default async function DocumentsPage({ params }: Props) {
           folderLink={folderHref(folderPath)}
           visibility={r.visibility}
           siblings={siblings}
+          newsHref={news && (!news.membersOnly || viewer !== "guest") ? `/nyheter/${news.slug}` : undefined}
         />
         <Toaster aboveTabBar />
       </Page>
     );
   }
 
-  const listing = listFolder(r.path, viewer)!;
+  const listing = listFolder(archive, r.path, viewer)!;
   const folders: FolderCardData[] = listing.folders.map((f) => ({
     title: f.folder.title,
     description: f.folder.description,
@@ -125,7 +117,14 @@ export default async function DocumentsPage({ params }: Props) {
   if (!r.path.length) {
     return (
       <Page>
-        <RootView viewer={viewer} folders={folders} membersOnly={listing.membersOnly} loginHref={loginHref} />
+        <RootView
+          archive={archive}
+          viewer={viewer}
+          folders={folders}
+          membersOnly={listing.membersOnly}
+          loginHref={loginHref}
+        />
+        <Toaster aboveTabBar />
       </Page>
     );
   }
@@ -142,45 +141,44 @@ export default async function DocumentsPage({ params }: Props) {
         docs={listing.docs.map(withEffective)}
         membersOnly={listing.membersOnly}
         loginHref={loginHref}
-        extraFolders={
-          r.path[0] === "protokoll" && r.path.length === 1 ? (
-            <DemoUploadFolders
-              path={r.path}
-              known={(r.folder.folders ?? []).map((f) => f.slug)}
-              viewer={viewer}
-            />
-          ) : undefined
-        }
-        extraRows={<DemoUploadRows path={r.path} viewer={viewer} folderVisibility={r.visibility} />}
+        board={viewer === "board"}
       />
       <Toaster aboveTabBar />
     </Page>
   );
 }
 
-function RootView({
+async function RootView({
+  archive,
   viewer,
   folders,
   membersOnly,
   loginHref,
 }: {
+  archive: DocArchive;
   viewer: Viewer;
   folders: FolderCardData[];
   membersOnly: number;
   loginHref: string;
 }) {
-  const latest = latestDocuments(viewer, 4).map(withEffective);
+  const t = await getPageTexts("dokument");
+  const latest = latestDocuments(archive, viewer, 4).map((d) => ({
+    ...d,
+    effective: effectiveVisibility(archive.root, d),
+  }));
   return (
     <>
       <PageHero
-        kicker="Dokument"
-        title="Protokoll, policys och stadgar"
-        intro={
-          viewer === "guest"
-            ? "Föreningens styrdokument samlade på ett ställe. Protokollen från styrelsemöten och årsmöten är för medlemmar – logga in så ser du dem."
-            : "Föreningens protokoll och styrdokument samlade på ett ställe. Dela gärna länkar: den som inte är inloggad loggar in och hamnar direkt rätt."
-        }
-      />
+        kicker={t("hero.kicker")}
+        title={t("hero.title")}
+        intro={viewer === "guest" ? t("hero.introGuest") : t("hero.introMember")}
+      >
+        {viewer === "board" && (
+          <div className="run-in mt-2 flex" style={{ "--i": 3 } as CSSProperties}>
+            <UploadButton path={[]} onDark />
+          </div>
+        )}
+      </PageHero>
       <div className="mx-auto flex max-w-[1200px] flex-col gap-12 px-4 pt-4 pb-16 md:px-6">
         <section className="flex flex-col gap-5" aria-labelledby="mappar">
           <SectionHeading>
