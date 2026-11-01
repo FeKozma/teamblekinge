@@ -100,8 +100,8 @@ export default async function AdminHome() {
         <section className="flex flex-wrap items-center gap-4 rounded-xl border border-dashed border-purple/40 bg-purple-soft p-4 md:p-5">
           <IconInfo size={22} className="flex-none text-purple" />
           <p className="m-0 min-w-[220px] flex-1 text-[14px]">
-            <strong>Demo:</strong> ändringarna sparas på servern och syns för alla som tittar på demon. Har det blivit
-            rörigt kan du återställa allt till hur det såg ut från början.
+            <strong>Demo:</strong> dina ändringar syns bara för dig, och de försvinner när du stänger webbläsaren. På
+            den riktiga webbplatsen syns de för alla besökare. Vill du börja om kan du återställa allt direkt.
           </p>
           <ResetContentButton />
         </section>

@@ -98,7 +98,7 @@ export function AdminSidebar() {
           Återställ demons klick
         </button>
         <span className="mt-1 px-3 text-[12px] leading-snug text-muted">
-          Gilla, kommentarer och anmälningar sparas i din webbläsare. Innehållet du ändrar här syns för alla.
+          Demo: allt du gör syns bara för dig och försvinner när du stänger webbläsaren.
         </span>
       </nav>
 

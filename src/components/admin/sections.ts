@@ -42,6 +42,14 @@ export const adminSections: AdminSection[] = [
     publicLabel: "Dokument",
   },
   {
+    slug: "aktuellt",
+    label: "Aktuellt-bandet",
+    group: "Innehåll",
+    about: "Den orange raden överst på startsidan: visa eller dölj den, text, länk och sista dag.",
+    publicHref: "/",
+    publicLabel: "Startsidan",
+  },
+  {
     slug: "sidor",
     label: "Sidtexter",
     group: "Innehåll",
@@ -63,6 +71,14 @@ export const adminSections: AdminSection[] = [
     group: "Föreningen",
     about: "Vilka som sitter i styrelsen och vem som ansvarar för vad.",
     publicHref: "/foreningen#styrelsen",
+    publicLabel: "Föreningen",
+  },
+  {
+    slug: "historia",
+    label: "Historia",
+    group: "Föreningen",
+    about: "Händelserna på tidslinjen under Föreningen. Lägg till en ny när något stort händer.",
+    publicHref: "/foreningen#historia",
     publicLabel: "Föreningen",
   },
   {

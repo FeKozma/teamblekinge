@@ -4,7 +4,7 @@ import { useRef, useTransition } from "react";
 import { resetAllContent } from "@/app/admin/actions";
 import { toast } from "@/components/documents/Toaster";
 
-/** Demo only: puts every text, news item and event back as it was. Asks first. */
+/** Demo only: puts every text, news item and event back as it was for this visitor. Asks first. */
 export function ResetContentButton() {
   const dialog = useRef<HTMLDialogElement>(null);
   const [pending, startTransition] = useTransition();
@@ -24,8 +24,8 @@ export function ResetContentButton() {
             Återställa allt innehåll?
           </h2>
           <p className="m-0 text-muted">
-            Alla ändringar som gjorts i administrationen – nyheter, kalender, dokument, texter – försvinner, och
-            webbplatsen ser ut som från början igen. Det gäller för alla som tittar på demon.
+            Allt du har ändrat och laddat upp i administrationen – nyheter, kalender, dokument, texter – försvinner,
+            och webbplatsen ser ut som från början igen.
           </p>
           <div className="mt-2 flex justify-end gap-2">
             <button type="button" onClick={() => dialog.current?.close()} className="btn btn-outline">
