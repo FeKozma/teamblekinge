@@ -7,10 +7,13 @@ import { CommentCount } from "@/components/news/LiveCounts";
 import { PdfIcon } from "@/components/news/PdfIcon";
 import { dayMonthLong, newsDate, pinnedNews } from "@/components/news/util";
 import { ArrowLink, DateBadge, Pill, SectionHeading, SpeedLines } from "@/components/ui";
-import { termPlan, trainingGroups } from "@/lib/data/club";
-import { upcomingEvents } from "@/lib/data/events";
+import { upcomingEvents } from "@/lib/content/events";
+import { listNews } from "@/lib/content/news";
+import { getTermPlan, getTrainingGroups } from "@/lib/content/training";
+import type { TermPlan, TrainingGroup } from "@/lib/data/club";
+import type { ClubEvent } from "@/lib/data/events";
 import { feed, feedKindLabel } from "@/lib/data/feed";
-import { commentCount, listNews, type NewsItem } from "@/lib/data/news";
+import { commentCount, type NewsItem } from "@/lib/data/news";
 import { people, type DemoUser } from "@/lib/data/users";
 import { longDate, nextTuesday, relativeDay } from "@/lib/format";
 import { FreshCount, FreshList, type FreshItem } from "./FreshList";
@@ -19,8 +22,13 @@ import { MySignups, type SignupSource } from "./MySignups";
 // Medlemshem — what a logged-in member sees on "/" (drawup 03, phone). On wide
 // screens the same blocks spread into a main column and a side column.
 
-export function MemberHome({ user, today }: { user: DemoUser; today: string }) {
-  const visible = listNews({ members: true });
+export async function MemberHome({ user, today }: { user: DemoUser; today: string }) {
+  const [visible, events, termPlan, groups] = await Promise.all([
+    listNews({ members: true }),
+    upcomingEvents(today, { members: true }),
+    getTermPlan(),
+    getTrainingGroups(),
+  ]);
   const [featured] = pinnedNews(visible, today);
   const protocol = visible.find((n) => n.category === "Styrelsen" && n.document);
   const fresh = freshItems(visible, featured, today);
@@ -97,8 +105,8 @@ export function MemberHome({ user, today }: { user: DemoUser; today: string }) {
               <MySignups items={signups} today={today} me={user.id} />
             </div>
           </section>
-          <Upcoming today={today} />
-          <WeekTraining today={today} />
+          <Upcoming today={today} events={events} />
+          <WeekTraining today={today} termPlan={termPlan} trainingGroups={groups} />
         </aside>
       </div>
     </div>
@@ -286,10 +294,8 @@ function ProtocolCard({ n }: { n: NewsItem }) {
 }
 
 /** Coming up for members — one-off events; the weekly sessions have their own card. */
-function Upcoming({ today }: { today: string }) {
-  const items = upcomingEvents(today, { members: true })
-    .filter((e) => e.kind !== "traning")
-    .slice(0, 5);
+function Upcoming({ today, events }: { today: string; events: ClubEvent[] }) {
+  const items = events.filter((e) => e.kind !== "traning").slice(0, 5);
   return (
     <section className="card flex flex-col gap-3.5 p-5" data-reveal="right" style={{ "--reveal-i": 1 } as CSSProperties}>
       <h2 className="m-0 text-[19px] font-extrabold">Kommande</h2>
@@ -321,7 +327,15 @@ function Upcoming({ today }: { today: string }) {
   );
 }
 
-function WeekTraining({ today }: { today: string }) {
+function WeekTraining({
+  today,
+  termPlan,
+  trainingGroups,
+}: {
+  today: string;
+  termPlan: TermPlan;
+  trainingGroups: TrainingGroup[];
+}) {
   const date = nextTuesday(today);
   const plan = termPlan[date];
   const when = relativeDay(date, today) === "I dag" ? "I kväll" : longDate(date);

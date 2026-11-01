@@ -1,5 +1,6 @@
-// Calendar. Recurring club sessions are generated; one-off events are listed.
-// Löprundor posted in Klubbflödet also show up here (source: "flode").
+// Calendar SEED. Recurring club sessions are generated; one-off events are
+// listed. Löprundor posted in Klubbflödet also show up here (source: "flode").
+// Pages read the board's edited version via lib/content/events.
 
 export type EventKind = "traning" | "lopp" | "lopprunda" | "mote" | "resa";
 
@@ -27,7 +28,7 @@ export const eventKindLabel: Record<EventKind, string> = {
   resa: "Åka och tävla",
 };
 
-const oneOff: ClubEvent[] = [
+export const oneOffEvents: ClubEvent[] = [
   {
     id: "langpass-mortsjon",
     date: "2026-10-31",
@@ -108,7 +109,7 @@ function isoDate(d: Date) {
 }
 
 /** Tuesday intervals and Thursday walks from `from` for `weeks` weeks. */
-function recurring(from: string, weeks: number): ClubEvent[] {
+export function recurringEvents(from = "2026-10-26", weeks = 10): ClubEvent[] {
   const out: ClubEvent[] = [];
   const start = new Date(`${from}T12:00:00Z`);
   for (let i = 0; i < weeks * 7; i++) {
@@ -153,12 +154,13 @@ function recurring(from: string, weeks: number): ClubEvent[] {
   return out;
 }
 
-export const events: ClubEvent[] = [...recurring("2026-10-26", 10), ...oneOff].sort((a, b) =>
-  (a.date + a.time).localeCompare(b.date + b.time),
-);
+/** Chronological order: date, then time. */
+export function byStart(a: ClubEvent, b: ClubEvent) {
+  return (a.date + a.time).localeCompare(b.date + b.time);
+}
 
 /** Upcoming events from `today` (inclusive), optionally hiding members-only ones. */
-export function upcomingEvents(today: string, opts: { limit?: number; members?: boolean } = {}) {
+export function upcomingIn(events: ClubEvent[], today: string, opts: { limit?: number; members?: boolean } = {}) {
   return events
     .filter((e) => e.date >= today && (opts.members || !e.membersOnly))
     .slice(0, opts.limit ?? Infinity);

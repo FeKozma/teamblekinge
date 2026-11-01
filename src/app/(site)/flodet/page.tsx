@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { FeedApp } from "@/components/feed/FeedApp";
 import { Page } from "@/components/ui";
-import { events } from "@/lib/data/events";
+import { getEvents } from "@/lib/content/events";
+import { getAllNews } from "@/lib/content/news";
 import { feed } from "@/lib/data/feed";
-import { news } from "@/lib/data/news";
 import { todayISO } from "@/lib/format";
 import { getSession } from "@/lib/session";
 
@@ -16,6 +16,7 @@ export default async function FlodetPage() {
   if (!user) redirect("/logga-in?next=/flodet");
 
   const today = todayISO();
+  const [news, events] = await Promise.all([getAllNews(), getEvents()]);
   // "Viktigt i Nyheter": still-pinned news, soonest deadline first.
   const pinned = news
     .filter((n) => n.pinnedUntil && n.pinnedUntil >= today)

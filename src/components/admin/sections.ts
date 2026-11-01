@@ -1,13 +1,16 @@
-// The admin sidebar, grouped as in drawup 09: what the board can already do on
-// the old site ("Som förut") and what the new site adds ("Nytt"). Only
-// Dokument is built in the demo; the rest get a page saying what they'll do.
+// The admin's sections, grouped by what the board wants to do. Sections with
+// `planned` are not built yet: /admin/[section] shows what they will do.
+
+export const adminGroups = ["Innehåll", "Föreningen", "Träning & tävling", "Medlemmar"] as const;
 
 export type AdminSection = {
   slug: string;
   label: string;
-  group: "Som förut" | "Nytt";
-  /** What the section will do on the real site (placeholder pages). */
+  group: (typeof adminGroups)[number];
+  /** One line on the start page: what you do here. */
   about: string;
+  /** Not built yet — a placeholder page describes it. */
+  planned?: boolean;
   /** Where the result shows up on the public site. */
   publicHref?: string;
   publicLabel?: string;
@@ -17,91 +20,112 @@ export const adminSections: AdminSection[] = [
   {
     slug: "nyheter",
     label: "Nyheter",
-    group: "Som förut",
-    about:
-      "Skriv nyheter, välj kategori och om de är öppna för alla eller bara för medlemmar. Viktiga nyheter kan fästas under ”Viktigt nu” fram till ett visst datum.",
+    group: "Innehåll",
+    about: "Skriv nya nyheter, ändra eller ta bort gamla. Välj om de är för alla eller bara för medlemmar.",
     publicHref: "/nyheter",
     publicLabel: "Nyheter",
   },
   {
     slug: "kalender",
     label: "Kalender",
-    group: "Som förut",
-    about:
-      "Lägg in träningar, långpass, tävlingar och möten. Allt som läggs in syns i kalendern på webbplatsen och i medlemmarnas kalenderprenumeration.",
+    group: "Innehåll",
+    about: "Lägg in träningar, möten, lopp och resor. De syns i kalendern och i medlemmarnas kalenderprenumeration.",
     publicHref: "/kalender",
     publicLabel: "Kalendern",
   },
   {
-    slug: "aktiviteter",
-    label: "Aktiviteter med anmälan",
-    group: "Som förut",
-    about:
-      "Skapa anmälningar till stafetter, funktionärspass och resor – med sista anmälningsdag, antal platser och egna frågor som sträcka, fart eller platser i bil. Listan kan laddas ner när lagen ska sättas.",
-    publicHref: "/nyheter",
-    publicLabel: "Nyheter med anmälan",
-  },
-  {
-    slug: "sidor",
-    label: "Sidor",
-    group: "Som förut",
-    about:
-      "Redigera de fasta sidorna – Träna med oss, Tävla, Föreningen och Bli medlem – i en enkel editor, utan att behöva kunna kod.",
-    publicHref: "/trana-med-oss",
-    publicLabel: "Träna med oss",
-  },
-  {
     slug: "dokument",
     label: "Dokument",
-    group: "Som förut",
-    about: "Ladda upp protokoll och styrdokument och välj vem som får se dem.",
+    group: "Innehåll",
+    about: "Ladda upp protokoll, policys och andra PDF:er och välj vem som får se dem.",
     publicHref: "/dokument",
     publicLabel: "Dokument",
   },
   {
-    slug: "sponsorer",
-    label: "Sponsorer",
-    group: "Som förut",
-    about:
-      "Lägg till samarbetspartners med logga och länk och bestäm i vilken ordning de visas. De rullar förbi längst ner på startsidan.",
+    slug: "sidor",
+    label: "Sidtexter",
+    group: "Innehåll",
+    about: "Ändra rubriker och texter på de fasta sidorna – Startsidan, Träna med oss, Föreningen och de andra.",
     publicHref: "/",
     publicLabel: "Startsidan",
   },
   {
-    slug: "klubbflodet",
-    label: "Klubbflödet (moderering)",
-    group: "Nytt",
-    about:
-      "Se inlägg och kommentarer som medlemmar har anmält och dölj det som inte hör hemma i flödet. Styrelsen får en avisering när något anmäls.",
-    publicHref: "/flodet",
-    publicLabel: "Klubbflödet",
+    slug: "foreningsuppgifter",
+    label: "Föreningsuppgifter",
+    group: "Föreningen",
+    about: "Medlemsavgift, Swish och bankgiro, adress, kontaktperson och länkar till sociala medier.",
+    publicHref: "/bli-medlem",
+    publicLabel: "Bli medlem",
+  },
+  {
+    slug: "styrelsen",
+    label: "Styrelse och ansvariga",
+    group: "Föreningen",
+    about: "Vilka som sitter i styrelsen och vem som ansvarar för vad.",
+    publicHref: "/foreningen#styrelsen",
+    publicLabel: "Föreningen",
+  },
+  {
+    slug: "vanliga-fragor",
+    label: "Vanliga frågor",
+    group: "Föreningen",
+    about: "Lägg till, ändra och sortera frågor och svar. De fyra första visas också på startsidan.",
+    publicHref: "/fragor",
+    publicLabel: "Frågor & kontakt",
+  },
+  {
+    slug: "sponsorer",
+    label: "Sponsorer",
+    group: "Föreningen",
+    about: "Samarbetspartners med logga och länk. De rullar förbi längst ner på startsidan.",
+    publicHref: "/",
+    publicLabel: "Startsidan",
+  },
+  {
+    slug: "traning",
+    label: "Träning",
+    group: "Träning & tävling",
+    about: "Träningsgrupperna, terminens tisdagspass och årets långpass.",
+    publicHref: "/trana-med-oss",
+    publicLabel: "Träna med oss",
+  },
+  {
+    slug: "lopp",
+    label: "Våra lopp",
+    group: "Träning & tävling",
+    about: "Jämjöhalvan, Kustmaran och de andra: datum, distanser, avgifter och anmälan.",
+    publicHref: "/tavla",
+    publicLabel: "Tävla",
   },
   {
     slug: "resultat",
     label: "Resultat",
-    group: "Nytt",
+    group: "Träning & tävling",
+    planned: true,
     about:
       "Lägg in klubbens resultat från lopp och tävlingar. De samlas under Tävla, och klubbrekorden (All Time High) räknas fram automatiskt.",
     publicHref: "/tavla#resultat",
     publicLabel: "Resultat",
   },
   {
-    slug: "traningsplan",
-    label: "Träningsplan",
-    group: "Nytt",
+    slug: "aktiviteter",
+    label: "Anmälningar",
+    group: "Medlemmar",
+    planned: true,
     about:
-      "Planera terminens tisdagspass för de tre träningsgrupperna. Planen visas under ”Veckans träning” på startsidan och i kalendern.",
-    publicHref: "/trana-med-oss",
-    publicLabel: "Träna med oss",
+      "Se vilka som anmält sig till stafetter, funktionärspass och resor – och ladda ner listan när lagen ska sättas.",
+    publicHref: "/nyheter",
+    publicLabel: "Nyheter med anmälan",
   },
   {
-    slug: "vanliga-fragor",
-    label: "Vanliga frågor",
-    group: "Nytt",
+    slug: "klubbflodet",
+    label: "Klubbflödet",
+    group: "Medlemmar",
+    planned: true,
     about:
-      "Lägg till, ändra och sortera frågor och svar. De visas under Frågor & kontakt, och de vanligaste som genvägar på startsidan.",
-    publicHref: "/fragor",
-    publicLabel: "Frågor & kontakt",
+      "Se inlägg och kommentarer som medlemmar har anmält och dölj det som inte hör hemma i flödet. Styrelsen får en avisering när något anmäls.",
+    publicHref: "/flodet",
+    publicLabel: "Klubbflödet",
   },
 ];
 

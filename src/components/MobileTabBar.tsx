@@ -176,9 +176,16 @@ export function MobileTabBar({ nav, user, feedBadge = 0 }: Props) {
                 </Link>
               </li>
             )}
+            {user && (
+              <li className="border-b border-ink-2">
+                <Link href="/installningar" className="flex px-2 py-3.5 text-[17px] font-bold text-white no-underline">
+                  Inställningar
+                </Link>
+              </li>
+            )}
             {user?.role === "board" && (
               <li className="border-b border-ink-2">
-                <Link href="/admin/dokument" className="flex px-2 py-3.5 text-[17px] font-bold text-orange no-underline">
+                <Link href="/admin" className="flex px-2 py-3.5 text-[17px] font-bold text-orange no-underline">
                   Administration
                 </Link>
               </li>

@@ -9,7 +9,7 @@ import { LongRunTrack } from "@/components/public/LongRunTrack";
 import { ParkingSketch } from "@/components/public/ParkingSketch";
 import { ArrowLink, DateBadge, Page, PageHero, Pill, SectionHeading } from "@/components/ui";
 import { club, longRuns2026, termPlan, trainingGroups, type TrainingGroup } from "@/lib/data/club";
-import { events } from "@/lib/data/events";
+import { getEvents } from "@/lib/content/events";
 import { longDate, todayISO } from "@/lib/format";
 
 export const metadata: Metadata = {
@@ -376,8 +376,8 @@ function LongRuns({ today }: { today: string }) {
   );
 }
 
-function ThursdayGroup({ today }: { today: string }) {
-  const thursdays = events.filter((e) => e.id.startsWith("torsdagsgruppen-") && e.date >= today).slice(0, 3);
+async function ThursdayGroup({ today }: { today: string }) {
+  const thursdays = (await getEvents()).filter((e) => e.id.startsWith("torsdagsgruppen-") && e.date >= today).slice(0, 3);
   return (
     <section id="torsdagsgruppen" className="scroll-mt-4 bg-white py-16">
       <div className={`${wrap} flex flex-wrap items-center gap-x-14 gap-y-10`}>

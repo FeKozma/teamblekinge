@@ -23,3 +23,6 @@ next-env.d.ts
 
 # agent worktrees
 /.claude/worktrees/
+
+# Content edited in the admin (demo store) and uploads
+/.data/

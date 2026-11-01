@@ -7,7 +7,7 @@ import { Band, BandHeading, JumpNav, wrap } from "@/components/public/layout";
 import { IconBus, IconTicket } from "@/components/public/icons";
 import { RaceCard } from "@/components/public/RaceCard";
 import { ArrowLink, DateBadge, Page, PageHero, Pill, SectionHeading } from "@/components/ui";
-import { events } from "@/lib/data/events";
+import { getEvents } from "@/lib/content/events";
 import { races, type Race } from "@/lib/data/races";
 import { dayMonth, longDate, todayISO } from "@/lib/format";
 
@@ -78,8 +78,8 @@ function OurRaces({ today }: { today: string }) {
   );
 }
 
-function TravelTogether({ today }: { today: string }) {
-  const meeting = events.find((e) => e.id === "aka-och-tavla" && e.date >= today);
+async function TravelTogether({ today }: { today: string }) {
+  const meeting = (await getEvents()).find((e) => e.id === "aka-och-tavla" && e.date >= today);
   const perks: { Icon: typeof IconBus; title: string; text: string }[] = [
     {
       Icon: IconTicket,

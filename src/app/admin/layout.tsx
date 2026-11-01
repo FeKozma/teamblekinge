@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 // (requireBoard), since layouts don't re-render on every navigation.
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   const user = await getSession();
-  if (!user) redirect("/logga-in?next=/admin/dokument");
+  if (!user) redirect("/logga-in?next=/admin");
   return (
     <div className="min-h-dvh bg-paper text-[15px]">
       <AdminTopBar user={user} />
@@ -29,7 +29,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
       ) : (
         <NotBoard user={user} />
       )}
-      <Toaster />
+      <Toaster aboveSaveBar />
     </div>
   );
 }

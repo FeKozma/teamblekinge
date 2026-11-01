@@ -2,14 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { IconCheck } from "@/components/icons";
-import { club } from "@/lib/data/club";
 import { DemoNote } from "./DemoNote";
 import { inputClass } from "./MembershipForm";
 
 const subjects = ["Medlemskap", "Träning", "Våra lopp", "Annat"];
 
 /** DEMO contact form: submitting only shows a thank-you state, nothing is sent. */
-export function ContactForm() {
+export function ContactForm({ raceEmail }: { raceEmail: string }) {
   const [sent, setSent] = useState<{ firstName: string; subject: string } | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
@@ -29,7 +28,7 @@ export function ContactForm() {
         <DemoNote>Det här är en demo – meddelandet har inte skickats någonstans.</DemoNote>
         {sent.subject === "Våra lopp" && (
           <p className="m-0">
-            Frågor om loppen går till <a href={`mailto:${club.contact.raceEmail}`}>{club.contact.raceEmail}</a>.
+            Frågor om loppen går till <a href={`mailto:${raceEmail}`}>{raceEmail}</a>.
           </p>
         )}
         <button type="button" onClick={() => setSent(null)} className="btn btn-outline self-start">

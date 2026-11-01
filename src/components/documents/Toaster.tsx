@@ -19,8 +19,11 @@ export function toast(message: string, tone: Tone = "ok") {
 
 let nextId = 1;
 
-/** `aboveTabBar`: lift the toasts clear of the public site's mobile tab bar. */
-export function Toaster({ aboveTabBar = false }: { aboveTabBar?: boolean }) {
+/**
+ * `aboveTabBar`: lift the toasts clear of the public site's mobile tab bar.
+ * `aboveSaveBar`: clear of the admin forms' sticky save bar.
+ */
+export function Toaster({ aboveTabBar = false, aboveSaveBar = false }: { aboveTabBar?: boolean; aboveSaveBar?: boolean }) {
   const [items, setItems] = useState<Item[]>([]);
 
   useEffect(() => {
@@ -52,7 +55,11 @@ export function Toaster({ aboveTabBar = false }: { aboveTabBar?: boolean }) {
       role="status"
       aria-live="polite"
       className={`pointer-events-none fixed inset-x-0 z-[90] flex flex-col items-center gap-2 px-4 md:right-6 md:bottom-6 md:left-auto md:items-end md:px-0 ${
-        aboveTabBar ? "bottom-[calc(env(safe-area-inset-bottom)+80px)]" : "bottom-4"
+        aboveSaveBar
+          ? "bottom-24 md:bottom-24"
+          : aboveTabBar
+            ? "bottom-[calc(env(safe-area-inset-bottom)+80px)]"
+            : "bottom-4"
       }`}
     >
       {items.map((t) => (

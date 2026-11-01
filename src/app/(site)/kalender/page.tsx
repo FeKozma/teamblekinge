@@ -5,7 +5,8 @@ import { CalendarView } from "@/components/calendar/CalendarView";
 import { CopyIcsLink } from "@/components/calendar/CopyIcsLink";
 import { IconCalendar, IconPeople } from "@/components/icons";
 import { ArrowLink, Page, PageHero } from "@/components/ui";
-import { events, isPublicEvent } from "@/lib/data/events";
+import { getEvents } from "@/lib/content/events";
+import { isPublicEvent } from "@/lib/data/events";
 import { todayISO } from "@/lib/format";
 import { getSession } from "@/lib/session";
 
@@ -17,7 +18,7 @@ export default async function KalenderPage() {
   const user = await getSession();
   const member = !!user;
   const today = todayISO();
-  const upcoming = events.filter((e) => e.date >= today && (member || isPublicEvent(e)));
+  const upcoming = (await getEvents()).filter((e) => e.date >= today && (member || isPublicEvent(e)));
 
   return (
     <Page>

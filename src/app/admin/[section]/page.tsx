@@ -4,7 +4,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireBoard } from "@/components/admin/access";
 import { getAdminSection } from "@/components/admin/sections";
-import { IconInfo } from "@/components/icons";
 import { Page } from "@/components/ui";
 
 type Props = PageProps<"/admin/[section]">;
@@ -14,11 +13,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: getAdminSection(section)?.label ?? "Administration" };
 }
 
-/** Placeholder for the admin sections that aren't built in the demo. */
+/** Placeholder for the admin sections that aren't built yet (`planned` in sections.ts). */
 export default async function AdminSectionPage({ params }: Props) {
   const { section } = await params;
   const s = getAdminSection(section);
-  if (!s) notFound();
+  if (!s?.planned) notFound();
   if (!(await requireBoard())) return null;
 
   return (
@@ -30,7 +29,7 @@ export default async function AdminSectionPage({ params }: Props) {
             {s.label}
           </h1>
           <span className="bg-purple px-2.5 py-1 text-[12px] font-extrabold tracking-[1px] text-white uppercase [rotate:-2deg]">
-            {s.group === "Nytt" ? "Nytt på nya webbplatsen" : "Som förut – fast enklare"}
+            Kommer snart
           </span>
         </div>
 
@@ -49,8 +48,8 @@ export default async function AdminSectionPage({ params }: Props) {
           </h2>
           <p className="relative m-0 mt-3 max-w-[640px] text-[18px] leading-relaxed">{s.about}</p>
           <div className="relative mt-6 flex flex-wrap gap-3">
-            <Link href="/admin/dokument" className="btn btn-dark">
-              Prova Dokument – det är byggt
+            <Link href="/admin" className="btn btn-dark">
+              Till översikten
             </Link>
             {s.publicHref && (
               <Link href={s.publicHref} className="btn btn-outline">
@@ -59,12 +58,6 @@ export default async function AdminSectionPage({ params }: Props) {
             )}
           </div>
         </section>
-
-        <p className="m-0 flex gap-2.5 text-[14px] text-muted">
-          <IconInfo size={18} className="mt-0.5 flex-none text-purple" />
-          Demo: i administrationen är bara Dokument byggt. Den här sidan beskriver vad avsnittet ska göra på den
-          riktiga webbplatsen.
-        </p>
       </div>
     </Page>
   );

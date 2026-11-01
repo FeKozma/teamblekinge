@@ -38,7 +38,7 @@ export function NotBoard({ user }: { user: DemoUser }) {
         className="mt-4 rounded-xl border border-dashed border-purple/40 bg-purple-soft p-4 text-[14px]"
       >
         <input type="hidden" name="user" value="stina" />
-        <input type="hidden" name="next" value="/admin/dokument" />
+        <input type="hidden" name="next" value="/admin" />
         <p className="m-0">
           <strong>Demo:</strong> vill du se administrationen?{" "}
           <button type="submit" className="cursor-pointer font-semibold text-purple underline">

@@ -4,7 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { IconLock, IconPin, IconStar } from "@/components/icons";
 import { ArrowLink, SpeedLines } from "@/components/ui";
-import { commentCount, listNews, newsCategories, type NewsCategory, type NewsItem } from "@/lib/data/news";
+import { getAllNews } from "@/lib/content/news";
+import { commentCount, newsCategories, visibleNews, type NewsCategory, type NewsItem } from "@/lib/data/news";
 import type { DemoUser } from "@/lib/data/users";
 import { dayMonth } from "@/lib/format";
 import { LocalNews, NewNewsButton } from "./BoardNews";
@@ -29,7 +30,7 @@ function hrefWith(current: Filters, next: Partial<Filters>) {
   return s ? `/nyheter?${s}` : "/nyheter";
 }
 
-export function NewsIndex({
+export async function NewsIndex({
   user,
   today,
   category,
@@ -40,8 +41,9 @@ export function NewsIndex({
   today: string;
 } & Filters) {
   const members = !!user;
-  const visible = listNews({ members });
-  const hiddenForGuests = listNews({ members: true }).length - visible.length;
+  const all = await getAllNews();
+  const visible = visibleNews(all, { members });
+  const hiddenForGuests = all.length - visible.length;
 
   const currentYear = Number(today.slice(0, 4));
   const viewYear = year ?? currentYear;

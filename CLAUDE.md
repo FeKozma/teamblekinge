@@ -4,7 +4,8 @@
 
 New website for Team Blekinge Löparförening (running club, Karlskrona), replacing the
 SvenskaLag site at teamblekinge.nu. This is a **clickable demo**: Next.js 16 App Router +
-React 19 + Tailwind 4, no database yet. Content lives in `src/lib/data/*.ts`; login and
+React 19 + Tailwind 4, no database yet. Content is seeded from `src/lib/data/*.ts` and edited
+by the board in `/admin` (stored as JSON on the server, see "Content store"); login and member
 interactions are faked (see "Demo plumbing").
 
 ## Commands
@@ -60,10 +61,48 @@ reduced motion), so without JS / with reduced motion everything renders in its f
 
 - `src/app/(site)/` — everything with the public header/footer/mobile tab bar.
   `page.tsx` = landing for guests, member home (`components/member/MemberHome.tsx`) when logged in.
-- `src/app/admin/` — administration (own chrome, board members only).
+- `src/app/admin/` — administration (own chrome, board members only). `/admin` = overview;
+  one folder per section (`nyheter`, `kalender`, `dokument`, `sidor`, `vanliga-fragor`, …).
+  Sections not built yet are `planned` in `components/admin/sections.ts` and fall through to
+  `admin/[section]` (a "Kommer snart" page).
 - `src/components/ui.tsx` — Page, SectionHeading, ArrowLink, Pill, DateBadge, Avatar, SpeedLines, PageHero.
 - `src/components/icons.tsx` — line icons. `Logo.tsx` — wordmark with animated runners.
-- `src/lib/data/` — club, users, events, races, news, feed (+ documents). `lib/format.ts` — Swedish dates.
+- `src/lib/data/` — SEED content: club, users, events, races, news, feed, documents, and
+  `pages/` (editable page texts). Pure helpers and types only; never read seed values in a
+  page — read through `lib/content`. `lib/format.ts` — Swedish dates.
+- `src/lib/content/` — server-only getters/savers over the content store (see below).
+
+## Content store (everything the board can edit)
+
+The site's text and data must be editable by non-technical board members, so nothing a
+visitor reads should be hard-coded in a page.
+
+- `lib/content/store.ts`: `readCollection(key, seed)` / `writeCollection(key, value)` — one JSON
+  file per collection in `.data/content/` (`CONTENT_DIR` overrides; git-ignored). Unedited
+  collections fall back to their seed in `lib/data`. Uploads: `saveUpload(file, {kinds})`
+  checks magic bytes and stores in `.data/files/`; images are served by `/filer/[id]`, PDFs
+  only through routes that check access. `resetContent()` backs "Återställ allt innehåll".
+- One module per area: `lib/content/news.ts`, `events.ts`, `club.ts` (club facts, board, roles,
+  FAQs, partners), `training.ts`, `races.ts`, `pages.ts`. Getters are async; server components
+  `await` them and pass data down as props. Client components never import seed values.
+- **Page texts**: each fixed page lists its texts in `lib/data/pages/<page>.ts` (key, label a
+  layperson understands, default text, `long` for paragraphs) grouped as the page shows them.
+  The page reads them with `const t = await getPageTexts("<page>")` → `t("hero.title")`
+  (unknown key throws). Long texts: render `paragraphs(t("…"))`. `/admin/sidor/<page>` builds
+  the editor from the definition automatically. Reference: `fragor.ts` + `(site)/fragor/page.tsx`.
+- **Admin pages**: `<AdminPage title intro crumbs publicHref>` frame; forms use the kit in
+  `components/admin/form.tsx` — `<AdminForm action>` (saves without reload, toast, sticky save
+  bar, unsaved-changes warning), `<FormSection>`, `TextInput`/`TextArea`/`SelectInput`/
+  `CheckboxField`, and `<ListEditor name initial fields newItem titleField>` for lists (posted as
+  JSON; parse with `parseList`). Props crossing to client components must be serializable (no
+  functions). Server actions live next to the page (`actions.ts`, `"use server"`), start with
+  `await boardOnly()`, validate, write, call `published()` (revalidates everything) and return
+  `saved("…")` or `invalid({ field: "message" })` — see `components/admin/server.ts`.
+  Reference section: `app/admin/vanliga-fragor/`.
+- Board members browsing the site get an "Ändra den här sidan" button (`EditThisPage`), mapped
+  in `lib/admin-links.ts` — add a line when a page gets an editor.
+- Admin copy: plain Swedish, say what happens ("Syns direkt på webbplatsen"), help text under
+  fields, errors next to the field. No jargon (slug, JSON, markdown).
 
 ## Demo plumbing
 
@@ -71,9 +110,12 @@ reduced motion), so without JS / with reduced motion everything renders in its f
   `app/(site)/logga-in/actions.ts` has `loginAs` / `logout`. Pages that need a member call
   `getSession()` and `redirect("/logga-in?next=…")` when null. Real auth later: Auth.js magic
   links + passkeys, as drawn.
-- **Interactions** (likes, "jag hänger med", comments, sign-ups, uploads): client components using
-  `useDemoState(key, initial)` from `lib/demo-store.ts` (localStorage, survives reloads; reset
-  from the footer). Never pretend data reached a server.
+- **Member interactions** (likes, "jag hänger med", comments, sign-ups, the member's own
+  settings at `/installningar`): client components using `useDemoState(key, initial)` from
+  `lib/demo-store.ts` (localStorage, survives reloads; reset from the footer). The demo login is
+  shared by every visitor, so personal state stays per browser. Never pretend data reached a
+  server. **Admin edits** are different: they really reach the server (content store) and
+  everyone sees them.
 - "Today" is the real date (`todayISO()`); content is dated around Oct–Nov 2026.
 - Demo people in `lib/data/users.ts` are fictional. Real names only where the old site publishes
   them (board, contacts).

@@ -4,13 +4,23 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { resetDemoState } from "@/lib/demo-store";
-import { adminSections, type AdminSection } from "./sections";
-
-const groups = ["Som förut", "Nytt"] as const;
+import { adminGroups as groups, adminSections, type AdminSection } from "./sections";
 
 function isCurrent(pathname: string, s: AdminSection) {
   const href = `/admin/${s.slug}`;
   return pathname === href || pathname.startsWith(href + "/");
+}
+
+function SoonTag({ dark = false }: { dark?: boolean }) {
+  return (
+    <span
+      className={`ml-auto flex-none rounded-full px-1.5 py-px text-[10px] font-bold tracking-[0.5px] uppercase ${
+        dark ? "bg-ink-2 text-mist" : "bg-line text-muted"
+      }`}
+    >
+      Snart
+    </span>
+  );
 }
 
 /**
@@ -35,6 +45,15 @@ export function AdminSidebar() {
         aria-label="Administration"
         className="sticky top-0 hidden w-[248px] flex-none flex-col gap-0.5 self-start px-3 py-5 lg:flex"
       >
+        <Link
+          href="/admin"
+          aria-current={pathname === "/admin" ? "page" : undefined}
+          className={`mb-3 flex min-h-10 items-center rounded-lg px-3 py-1.5 text-[15px] font-bold no-underline transition-[background-color,color,padding] duration-300 ${
+            pathname === "/admin" ? "bg-ink text-white hover:text-white" : "text-ink hover:bg-white hover:pl-4 hover:text-ink"
+          }`}
+        >
+          Översikt
+        </Link>
         {groups.map((g, gi) => (
           <div key={g} className="flex flex-col gap-0.5">
             <span
@@ -51,13 +70,14 @@ export function AdminSidebar() {
                     key={s.slug}
                     href={`/admin/${s.slug}`}
                     aria-current={active ? "page" : undefined}
-                    className={`group relative flex min-h-10 items-center rounded-lg px-3 py-1.5 text-[15px] leading-snug no-underline transition-[background-color,color,padding] duration-300 ${
+                    className={`group relative flex min-h-10 items-center gap-2 rounded-lg px-3 py-1.5 text-[15px] leading-snug no-underline transition-[background-color,color,padding] duration-300 ${
                       active
                         ? "bg-ink pr-10 font-bold text-white hover:text-white"
                         : "text-ink hover:bg-white hover:pl-4 hover:text-ink"
                     }`}
                   >
                     {s.label}
+                    {s.planned && !active && <SoonTag />}
                     {active && (
                       <span
                         aria-hidden="true"
@@ -77,6 +97,9 @@ export function AdminSidebar() {
         >
           Återställ demons klick
         </button>
+        <span className="mt-1 px-3 text-[12px] leading-snug text-muted">
+          Gilla, kommentarer och anmälningar sparas i din webbläsare. Innehållet du ändrar här syns för alla.
+        </span>
       </nav>
 
       <nav aria-label="Administration" className="border-b border-line bg-white lg:hidden">
@@ -84,6 +107,17 @@ export function AdminSidebar() {
           ref={strip}
           className="relative m-0 flex list-none items-center gap-1 overflow-x-auto px-3 py-2 [mask-image:linear-gradient(90deg,#000_88%,transparent)] [scrollbar-width:none] md:px-5"
         >
+          <li className="flex-none">
+            <Link
+              href="/admin"
+              aria-current={pathname === "/admin" ? "page" : undefined}
+              className={`relative flex min-h-10 items-center rounded-full px-3.5 text-[14px] font-bold whitespace-nowrap no-underline ${
+                pathname === "/admin" ? "bg-ink text-white hover:text-white" : "text-ink hover:bg-paper hover:text-ink"
+              }`}
+            >
+              Översikt
+            </Link>
+          </li>
           {groups.map((g) => [
             <li key={g} className="flex-none px-2 text-[11px] font-bold tracking-[1px] text-muted uppercase">
               {g}
@@ -97,11 +131,12 @@ export function AdminSidebar() {
                     <Link
                       href={`/admin/${s.slug}`}
                       aria-current={active ? "page" : undefined}
-                      className={`relative flex min-h-10 items-center rounded-full px-3.5 text-[14px] whitespace-nowrap no-underline ${
+                      className={`relative flex min-h-10 items-center gap-1.5 rounded-full px-3.5 text-[14px] whitespace-nowrap no-underline ${
                         active ? "bg-ink font-bold text-white hover:text-white" : "text-ink hover:bg-paper hover:text-ink"
                       }`}
                     >
                       {s.label}
+                      {s.planned && <SoonTag dark={active} />}
                       {active && (
                         <span
                           aria-hidden="true"

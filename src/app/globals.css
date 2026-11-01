@@ -597,3 +597,14 @@ details.faq[open] .chev {
     transform: none;
   }
 }
+
+/* Header dropdowns lean in from the corner they hang from. */
+.motion .menu-pop {
+  animation: menu-pop 0.32s var(--ease-sprint, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+@keyframes menu-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) rotate(-3deg) scale(0.96);
+  }
+}

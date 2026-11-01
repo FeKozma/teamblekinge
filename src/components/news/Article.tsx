@@ -4,7 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { IconChevronLeft, IconChevronRight, IconLock, IconPin, IconThumb } from "@/components/icons";
 import { ArrowLink, Avatar, SpeedLines } from "@/components/ui";
-import { commentCount, listNews, type NewsItem } from "@/lib/data/news";
+import { listNews } from "@/lib/content/news";
+import { commentCount, type NewsItem } from "@/lib/data/news";
 import { people, type DemoUser } from "@/lib/data/users";
 import { Discussion } from "./Discussion";
 import { NotifySettingsButton } from "./NotifySettings";
@@ -245,8 +246,8 @@ function GuestComments({ count, loginHref }: { count: number; loginHref: string 
 }
 
 /** Same category first, then the newest. */
-function MoreNews({ current, members, today }: { current: NewsItem; members: boolean; today: string }) {
-  const items = listNews({ members })
+async function MoreNews({ current, members, today }: { current: NewsItem; members: boolean; today: string }) {
+  const items = (await listNews({ members }))
     .filter((x) => x.slug !== current.slug)
     .sort((a, b) => Number(b.category === current.category) - Number(a.category === current.category))
     .slice(0, 4);

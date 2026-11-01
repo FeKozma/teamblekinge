@@ -2,9 +2,10 @@ import Link from "next/link";
 import Image from "next/image";
 import { ResetDemoButton } from "@/components/ResetDemoButton";
 import { IconInstagram, IconFacebook } from "@/components/icons";
-import { club } from "@/lib/data/club";
+import { getClub } from "@/lib/content/club";
 
-export function SiteFooter() {
+export async function SiteFooter() {
+  const club = await getClub();
   return (
     <footer
       className="relative -mt-16 bg-ink pb-24 text-[15px] text-mist md:pb-0"

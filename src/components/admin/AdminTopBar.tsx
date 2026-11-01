@@ -17,7 +17,7 @@ export function AdminTopBar({ user }: { user: DemoUser }) {
       <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-3 px-4 py-2.5 md:px-6">
         <div className="flex min-w-0 items-center gap-3">
           <Link
-            href="/admin/dokument"
+            href="/admin"
             className="group flex items-center gap-3 text-white no-underline hover:text-white"
             aria-label="Team Blekinge LF – administrationens startsida"
           >

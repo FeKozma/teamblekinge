@@ -1,4 +1,5 @@
-import { eventKindLabel, events, isPublicEvent, type ClubEvent } from "@/lib/data/events";
+import { getEvents } from "@/lib/content/events";
+import { eventKindLabel, isPublicEvent, type ClubEvent } from "@/lib/data/events";
 
 // Subscribable iCalendar feed (RFC 5545) of the club's public events — what a
 // guest sees in /kalender. Members-only events and löprundor from Klubbflödet
@@ -83,7 +84,8 @@ function publicOrigin(request: Request) {
   return `${proto}://${host}`;
 }
 
-export function GET(request: Request) {
+export async function GET(request: Request) {
+  const events = await getEvents();
   const origin = publicOrigin(request);
   // DTSTAMP is UTC: 20261031T081500Z
   const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");

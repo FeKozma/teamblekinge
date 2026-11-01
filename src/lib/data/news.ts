@@ -1,5 +1,6 @@
-// News ("Nyheter"). Headlines and facts follow the current site; members-only
-// items, comments and registrations are DEMO DATA for the logged-in drawups.
+// News ("Nyheter") SEED. Headlines and facts follow the current site;
+// members-only items, comments and registrations are DEMO DATA for the
+// logged-in drawups. Pages read the board's edited list via lib/content/news.
 
 export const newsCategories = [
   "Tävling & resor",
@@ -343,13 +344,9 @@ export const news: NewsItem[] = [
   },
 ];
 
-export function getNews(slug: string) {
-  return news.find((n) => n.slug === slug);
-}
-
 /** Newest first; hides members-only items for guests. */
-export function listNews(opts: { members?: boolean } = {}) {
-  return news
+export function visibleNews(all: NewsItem[], opts: { members?: boolean } = {}) {
+  return all
     .filter((n) => opts.members || !n.membersOnly)
     .sort((a, b) => b.date.localeCompare(a.date));
 }

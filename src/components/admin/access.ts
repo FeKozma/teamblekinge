@@ -10,6 +10,6 @@ import { getSession } from "@/lib/session";
  */
 export async function requireBoard() {
   const user = await getSession();
-  if (!user) redirect("/logga-in?next=/admin/dokument");
+  if (!user) redirect("/logga-in?next=/admin");
   return user.role === "board" ? user : null;
 }

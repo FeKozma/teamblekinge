@@ -1,8 +1,27 @@
 // Facts about the association. Sourced from the current teamblekinge.nu —
-// see docs/content-from-old-site.md. Keep this file the single place these
-// numbers live so the next fee change is a one-line edit.
+// see docs/content-from-old-site.md. This is the SEED: the board edits these
+// in the admin, and pages read the edited version via lib/content.
 
-export const club = {
+export type Club = {
+  name: string;
+  shortName: string;
+  founded: string;
+  foundedYear: number;
+  members: string;
+  fee: number;
+  feeYear: number;
+  swish: string;
+  bankgiro: string;
+  orgNr: string;
+  foreningsNr: string;
+  address: { street: string; zip: string; city: string; area: string };
+  contact: { name: string; role: string; raceEmail: string };
+  instagram: string;
+  facebookGroup: string;
+  trimtexShop: string;
+};
+
+export const club: Club = {
   name: "Team Blekinge Löparförening",
   shortName: "Team Blekinge",
   founded: "18 januari 1992",
@@ -28,7 +47,7 @@ export const club = {
   instagram: "https://www.instagram.com/teamblekinge/",
   facebookGroup: "https://www.facebook.com/groups/8922263261122819",
   trimtexShop: "https://shop.trimtexcustom.se/account/register",
-} as const;
+};
 
 export type TrainingGroup = {
   id: "langa" | "korta" | "halsa";
@@ -76,7 +95,9 @@ export const trainingGroups: TrainingGroup[] = [
  * Tonight's session per group, keyed by ISO date of the Tuesday.
  * DEMO DATA: in the real site the trainers fill in the terminsplan in admin.
  */
-export const termPlan: Record<string, Record<TrainingGroup["id"], string>> = {
+export type TermPlan = Record<string, Record<TrainingGroup["id"], string>>;
+
+export const termPlan: TermPlan = {
   "2026-10-27": {
     langa: "5 × 1 000 m, vila 90 s",
     korta: "8 × 400 m, vila 60 s",
@@ -99,8 +120,10 @@ export const termPlan: Record<string, Record<TrainingGroup["id"], string>> = {
   },
 };
 
+export type LongRun = { date: string; place: string; note?: string };
+
 /** Monthly long runs 2026 (from the old site). */
-export const longRuns2026 = [
+export const longRuns2026: LongRun[] = [
   { date: "2026-01-10", place: "Klubblokalen" },
   { date: "2026-02-28", place: "Klubblokalen" },
   { date: "2026-03-28", place: "Klubblokalen" },
@@ -112,7 +135,10 @@ export const longRuns2026 = [
   { date: "2026-10-03", place: "Holmsjö" },
 ];
 
-export const board2026 = [
+export type BoardMember = { name: string; role: string };
+export type RoleGroup = { title: string; names: string[] };
+
+export const board2026: BoardMember[] = [
   { name: "Simon Fröh", role: "Ordförande" },
   { name: "Marianne Collin", role: "Vice ordförande" },
   { name: "Jeanette Norman", role: "Kassör" },
@@ -122,7 +148,7 @@ export const board2026 = [
   { name: "Elsa Håkansson", role: "Ledamot" },
 ];
 
-export const otherRoles = [
+export const otherRoles: RoleGroup[] = [
   {
     title: "Tävlingskommitté",
     names: ["Lena Magnusson", "Simon Fröh", "Jonas Rosqvist", "Ola Ramén", "Lukas Lindman"],
@@ -183,7 +209,9 @@ export const faqs: Faq[] = [
   },
 ];
 
-export const partners = [
+export type Partner = { name: string; logo: string; url?: string };
+
+export const partners: Partner[] = [
   { name: "ICA Maxi Karlskrona", logo: "/img/partners/maxi-ica-karlskrona.jpg" },
   { name: "LF Blekinge", logo: "/img/partners/lf-blekinge.png" },
   { name: "ICA Supermarket Jämjöhallen", logo: "/img/partners/ica-supermarket-jamjohallen.png" },

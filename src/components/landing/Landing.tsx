@@ -16,35 +16,50 @@ import {
   SectionHeading,
   SpeedLines,
 } from "@/components/ui";
-import { club, faqs, partners, termPlan, trainingGroups } from "@/lib/data/club";
-import { upcomingEvents } from "@/lib/data/events";
-import { listNews, commentCount } from "@/lib/data/news";
-import { races } from "@/lib/data/races";
+import { getClub, getFaqs, getPartners } from "@/lib/content/club";
+import { upcomingEvents } from "@/lib/content/events";
+import { listNews } from "@/lib/content/news";
+import { getRaces } from "@/lib/content/races";
+import { getTermPlan, getTrainingGroups } from "@/lib/content/training";
+import type { Club, Faq, Partner, TermPlan, TrainingGroup } from "@/lib/data/club";
+import type { ClubEvent } from "@/lib/data/events";
+import { commentCount, type NewsItem } from "@/lib/data/news";
+import type { Race } from "@/lib/data/races";
 import { longDate, nextTuesday, relativeDay } from "@/lib/format";
 
 const toneTop = { ink: "bg-ink", orange: "bg-orange", purple: "bg-purple" } as const;
 
-export function Landing({ today }: { today: string }) {
+export async function Landing({ today }: { today: string }) {
+  const [club, faqs, partners, termPlan, groups, races, news, upcoming] = await Promise.all([
+    getClub(),
+    getFaqs(),
+    getPartners(),
+    getTermPlan(),
+    getTrainingGroups(),
+    getRaces(),
+    listNews(),
+    upcomingEvents(today, { limit: 5 }),
+  ]);
   const jamjo = races[0];
   return (
     <>
       <AktuelltBand />
-      <Hero raceStart={jamjo.start} raceName={jamjo.name} />
+      <Hero raceStart={jamjo.start} raceName={jamjo.name} foundedYear={club.foundedYear} />
       <div className="mx-auto flex max-w-[1200px] flex-wrap items-start gap-8 px-4 pt-10 pb-16 md:px-6">
         <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-10">
-          <WeeklyTraining today={today} />
+          <WeeklyTraining today={today} termPlan={termPlan} trainingGroups={groups} />
           <QuickLinks />
-          <LatestNews />
+          <LatestNews items={news.slice(0, 3)} />
         </div>
         <aside className="flex min-w-0 flex-[1_1_300px] flex-col gap-5">
-          <Upcoming today={today} />
-          <JoinCard />
-          <FollowUs />
+          <Upcoming today={today} items={upcoming} />
+          <JoinCard club={club} />
+          <FollowUs club={club} />
         </aside>
       </div>
-      <OurRaces />
-      <FaqTeaser />
-      <Partners />
+      <OurRaces races={races} />
+      <FaqTeaser faqs={faqs} />
+      <Partners partners={partners} />
     </>
   );
 }
@@ -70,7 +85,7 @@ function AktuelltBand() {
   );
 }
 
-function Hero({ raceStart, raceName }: { raceStart: string; raceName: string }) {
+function Hero({ raceStart, raceName, foundedYear }: { raceStart: string; raceName: string; foundedYear: number }) {
   const words = ["Löparklubb", "i", "Karlskrona", "–", "för"];
   return (
     <section
@@ -90,7 +105,7 @@ function Hero({ raceStart, raceName }: { raceStart: string; raceName: string }) 
       <div className="relative mx-auto flex max-w-[1200px] flex-wrap items-center gap-x-14 gap-y-8 px-4 pt-6 pb-32 md:px-6 md:pt-[72px] md:pb-[140px]">
         <div className="order-2 flex min-w-0 flex-[1_1_440px] flex-col gap-5 md:order-1">
           <span className="run-in self-start bg-orange px-3 py-1 text-[13px] font-extrabold tracking-[1px] text-ink uppercase [rotate:-2deg]">
-            Sedan {club.foundedYear} · Bastasjöområdet, Karlskrona
+            Sedan {foundedYear} · Bastasjöområdet, Karlskrona
           </span>
           <h1 className="m-0 text-[38px] leading-[1.05] font-extrabold tracking-[-1.5px] sm:text-[48px] lg:text-[56px]">
             {words.map((w, i) => (
@@ -161,7 +176,15 @@ function Hero({ raceStart, raceName }: { raceStart: string; raceName: string }) 
   );
 }
 
-function WeeklyTraining({ today }: { today: string }) {
+function WeeklyTraining({
+  today,
+  termPlan,
+  trainingGroups,
+}: {
+  today: string;
+  termPlan: TermPlan;
+  trainingGroups: TrainingGroup[];
+}) {
   const date = nextTuesday(today);
   const plan = termPlan[date];
   const isTonight = relativeDay(date, today) === "I dag";
@@ -255,8 +278,7 @@ function QuickLinks() {
   );
 }
 
-function LatestNews() {
-  const items = listNews().slice(0, 3);
+function LatestNews({ items }: { items: NewsItem[] }) {
   return (
     <section className="flex flex-col gap-4">
       <SectionHeading tone="purple" action={<ArrowLink href="/nyheter">Alla nyheter</ArrowLink>}>
@@ -305,8 +327,7 @@ function LatestNews() {
   );
 }
 
-function Upcoming({ today }: { today: string }) {
-  const items = upcomingEvents(today, { limit: 5 });
+function Upcoming({ today, items }: { today: string; items: ClubEvent[] }) {
   return (
     <section className="card flex flex-col gap-3.5 p-5" data-reveal="right">
       <h2 className="m-0 text-[19px] font-extrabold">Kommande aktiviteter</h2>
@@ -340,7 +361,7 @@ function Upcoming({ today }: { today: string }) {
   );
 }
 
-function JoinCard() {
+function JoinCard({ club }: { club: Club }) {
   return (
     <section
       data-reveal="right"
@@ -370,7 +391,7 @@ function JoinCard() {
   );
 }
 
-function FollowUs() {
+function FollowUs({ club }: { club: Club }) {
   return (
     <section className="card flex flex-col gap-2.5 p-5" data-reveal="right" style={{ "--reveal-i": 2 } as CSSProperties}>
       <h2 className="m-0 text-[19px] font-extrabold">Följ oss</h2>
@@ -389,7 +410,7 @@ function FollowUs() {
   );
 }
 
-function OurRaces() {
+function OurRaces({ races }: { races: Race[] }) {
   // Scattered like cards dropped on a table; each settles into place on scroll
   // and straightens up on hover.
   const poses = [
@@ -473,7 +494,7 @@ function OurRaces() {
   );
 }
 
-function FaqTeaser() {
+function FaqTeaser({ faqs }: { faqs: Faq[] }) {
   return (
     <section className="mx-auto flex max-w-[1200px] flex-wrap gap-10 px-4 py-14 md:px-6">
       <div className="flex min-w-0 flex-[1_1_280px] flex-col gap-3">
@@ -502,7 +523,7 @@ function FaqTeaser() {
   );
 }
 
-function Partners() {
+function Partners({ partners }: { partners: Partner[] }) {
   const row = [...partners, ...partners];
   return (
     <section aria-label="Samarbetspartners" className="border-t border-line bg-white">

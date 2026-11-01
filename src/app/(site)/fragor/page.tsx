@@ -6,7 +6,9 @@ import { FaqSearch } from "@/components/public/FaqSearch";
 import { IconExternal } from "@/components/public/icons";
 import { JumpNav, mapsUrl, wrap } from "@/components/public/layout";
 import { Page, PageHero, SectionHeading } from "@/components/ui";
-import { club, faqs } from "@/lib/data/club";
+import { getClub, getFaqs } from "@/lib/content/club";
+import { getPageTexts } from "@/lib/content/pages";
+import type { Club } from "@/lib/data/club";
 
 export const metadata: Metadata = {
   title: "Frågor & kontakt",
@@ -14,14 +16,11 @@ export const metadata: Metadata = {
     "Vanliga frågor om medlemskap, träning och våra lopp – och hur du når Team Blekinge Löparförening.",
 };
 
-export default function FaqPage() {
+export default async function FaqPage() {
+  const [club, faqs, t] = await Promise.all([getClub(), getFaqs(), getPageTexts("fragor")]);
   return (
     <Page>
-      <PageHero
-        kicker="Frågor & kontakt"
-        title="Vanliga frågor"
-        intro="Svar på det vi oftast får frågor om via mejl. Hittar du inte svaret? Hör av dig."
-      >
+      <PageHero kicker={t("hero.kicker")} title={t("hero.title")} intro={t("hero.intro")}>
         <JumpNav
           links={[
             { href: "#fragor", label: "Frågor och svar" },
@@ -34,18 +33,18 @@ export default function FaqPage() {
         <FaqSearch faqs={faqs} />
       </section>
 
-      <Contact />
+      <Contact club={club} t={t} />
     </Page>
   );
 }
 
-function Contact() {
+function Contact({ club, t }: { club: Club; t: (key: string) => string }) {
   const address = `${club.address.street}, ${club.address.zip} ${club.address.city}`;
   return (
     <section id="kontakt" className="scroll-mt-4 border-t border-line bg-white">
       <div className={`${wrap} flex flex-wrap items-start gap-x-10 gap-y-10 pt-14 pb-28`}>
         <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-6">
-          <SectionHeading sub="Skriv till oss, eller kom förbi en tisdag.">Kontakt</SectionHeading>
+          <SectionHeading sub={t("contact.sub")}>{t("contact.heading")}</SectionHeading>
           <div
             data-settle
             style={{ "--rest-rotate": "-1.5deg" } as CSSProperties}
@@ -109,8 +108,8 @@ function Contact() {
         </div>
 
         <div className="card min-w-0 flex-[2_1_440px] p-5 shadow-[0_16px_34px_-18px_rgba(34,30,31,0.4)] md:p-7" data-reveal="right">
-          <h3 className="m-0 mb-5 text-[22px] font-extrabold">Skriv till oss</h3>
-          <ContactForm />
+          <h3 className="m-0 mb-5 text-[22px] font-extrabold">{t("contact.formHeading")}</h3>
+          <ContactForm raceEmail={club.contact.raceEmail} />
         </div>
       </div>
     </section>

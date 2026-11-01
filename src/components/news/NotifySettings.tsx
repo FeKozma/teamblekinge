@@ -2,24 +2,13 @@
 
 import { useId, useRef, useState } from "react";
 import { IconBell, IconCheck, IconClose } from "@/components/icons";
+import Link from "next/link";
+import { newsFreqs as freqs, useNotify, type NewsFreq as Freq } from "@/components/member/prefs";
 import { newsCategories } from "@/lib/data/news";
-import { useDemoState } from "@/lib/demo-store";
-import { storeKeys } from "./store";
 
 // "Mina aviseringar": how often news arrive by e-mail, per category. DEMO: saved
 // in this browser only; the real site stores it on the member and sends mail.
-
-type Freq = "direkt" | "dag" | "vecka" | "av";
-type Notify = { freq: Freq; cats: string[] };
-
-const freqs: { id: Freq; label: string; hint: string }[] = [
-  { id: "direkt", label: "Direkt", hint: "Ett mejl per nyhet" },
-  { id: "dag", label: "Dagssammanfattning", hint: "Högst ett mejl per dag" },
-  { id: "vecka", label: "Veckobrev", hint: "Ett mejl i veckan" },
-  { id: "av", label: "Inga mejl", hint: "Bara klockan här på sidan" },
-];
-
-const initial: Notify = { freq: "dag", cats: [...newsCategories] };
+// The same settings are on /installningar.
 
 export function NotifySettingsButton({
   me,
@@ -32,7 +21,7 @@ export function NotifySettingsButton({
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
-  const [saved, setSaved] = useDemoState<Notify>(storeKeys.notify(me), initial);
+  const [saved, setSaved] = useNotify(me);
   const [flash, setFlash] = useState(false);
   const titleId = useId();
 
@@ -151,7 +140,11 @@ export function NotifySettingsButton({
             </fieldset>
 
             <p className="m-0 rounded-lg bg-purple-soft px-3 py-2 text-[13px] text-purple">
-              Demo: inställningarna sparas bara i den här webbläsaren – inga mejl skickas.
+              Fler mejlinställningar, e-post och telefon finns under{" "}
+              <Link href="/installningar" className="font-semibold text-purple">
+                Inställningar
+              </Link>
+              . Demo: sparas bara i den här webbläsaren – inga mejl skickas.
             </p>
           </div>
 

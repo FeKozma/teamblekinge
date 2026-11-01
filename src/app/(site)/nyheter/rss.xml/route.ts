@@ -1,4 +1,4 @@
-import { listNews } from "@/lib/data/news";
+import { listNews } from "@/lib/content/news";
 
 // Public news as RSS ("Nyheter via RSS" in the drawup). Members-only items are
 // never included — a feed reader has no session.
@@ -7,9 +7,9 @@ function esc(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-export function GET(request: Request) {
+export async function GET(request: Request) {
   const origin = new URL(request.url).origin;
-  const items = listNews()
+  const items = (await listNews())
     .map((n) => {
       const url = `${origin}/nyheter/${n.slug}`;
       return [
