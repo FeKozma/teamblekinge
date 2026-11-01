@@ -66,6 +66,14 @@ export const adminSections: AdminSection[] = [
     publicLabel: "Föreningen",
   },
   {
+    slug: "historia",
+    label: "Historia",
+    group: "Föreningen",
+    about: "Händelserna på tidslinjen under Föreningen. Lägg till en ny när något stort händer.",
+    publicHref: "/foreningen#historia",
+    publicLabel: "Föreningen",
+  },
+  {
     slug: "vanliga-fragor",
     label: "Vanliga frågor",
     group: "Föreningen",

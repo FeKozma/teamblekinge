@@ -38,7 +38,7 @@ export function AdminForm({
   action,
   children,
   submitLabel = "Spara",
-  savedHint = "Ändringarna syns direkt på webbplatsen.",
+  savedHint = "Ändringarna syns direkt på webbplatsen – i demon bara för dig.",
   secondary,
   className = "",
 }: {

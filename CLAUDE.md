@@ -5,8 +5,8 @@
 New website for Team Blekinge Löparförening (running club, Karlskrona), replacing the
 SvenskaLag site at teamblekinge.nu. This is a **clickable demo**: Next.js 16 App Router +
 React 19 + Tailwind 4, no database yet. Content is seeded from `src/lib/data/*.ts` and edited
-by the board in `/admin` (stored as JSON on the server, see "Content store"); login and member
-interactions are faked (see "Demo plumbing").
+by the board in `/admin` (stored as JSON on the server in a per-visitor sandbox, see "Content
+store"); login and member interactions are faked (see "Demo plumbing").
 
 ## Commands
 
@@ -78,10 +78,18 @@ The site's text and data must be editable by non-technical board members, so not
 visitor reads should be hard-coded in a page.
 
 - `lib/content/store.ts`: `readCollection(key, seed)` / `writeCollection(key, value)` — one JSON
-  file per collection in `.data/content/` (`CONTENT_DIR` overrides; git-ignored). Unedited
-  collections fall back to their seed in `lib/data`. Uploads: `saveUpload(file, {kinds})`
-  checks magic bytes and stores in `.data/files/`; images are served by `/filer/[id]`, PDFs
-  only through routes that check access. `resetContent()` backs "Återställ allt innehåll".
+  file per collection. Unedited collections fall back to their seed in `lib/data`. Uploads:
+  `saveUpload(file, {kinds})` checks magic bytes; images are served by `/filer/[id]`, PDFs only
+  through routes that check access. `resetContent()` backs "Återställ allt innehåll".
+- **Demo sandbox**: each visitor's edits and uploads are private to them. The first save sets a
+  session cookie (`tb_demo_sandbox`) and data lives in `.data/sandboxes/<id>/` (`CONTENT_DIR`
+  overrides `.data`; git-ignored); idle sandboxes are swept after 12 h, uploads capped at 50 MB
+  per visitor. So: the board's edits are visible only to the editing visitor in the demo, and
+  admin copy says so ("i demon bara för dig"). Uploaded images aren't visible to next/image's
+  optimizer — use `unoptimized={isUploadUrl(src)}` (`lib/uploads.ts`).
+- Demo-only limits are fine: an action that can't work in a demo (sending e-mail, inviting
+  people …) may just show `toast("Demoläget …", "info")` — but the UI must show how the real
+  flow would work.
 - One module per area: `lib/content/news.ts`, `events.ts`, `club.ts` (club facts, board, roles,
   FAQs, partners), `training.ts`, `races.ts`, `pages.ts`. Getters are async; server components
   `await` them and pass data down as props. Client components never import seed values.
@@ -114,8 +122,8 @@ visitor reads should be hard-coded in a page.
   settings at `/installningar`): client components using `useDemoState(key, initial)` from
   `lib/demo-store.ts` (localStorage, survives reloads; reset from the footer). The demo login is
   shared by every visitor, so personal state stays per browser. Never pretend data reached a
-  server. **Admin edits** are different: they really reach the server (content store) and
-  everyone sees them.
+  server. **Admin edits** really reach the server (content store), but in the visitor's own
+  sandbox — nobody else sees them.
 - "Today" is the real date (`todayISO()`); content is dated around Oct–Nov 2026.
 - Demo people in `lib/data/users.ts` are fictional. Real names only where the old site publishes
   them (board, contacts).

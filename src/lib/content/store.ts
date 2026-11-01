@@ -1,25 +1,88 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
-import { mkdir, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, rm, stat, utimes, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { cookies } from "next/headers";
 import { connection } from "next/server";
 
 // The site's editable content. Each collection (news, events, FAQs, page
-// texts …) is one JSON file under .data/content; until the board edits a
-// collection, its seed from src/lib/data is used. Uploaded files live in
-// .data/files. Edits made in the admin reach this server and are seen by every
-// visitor — that is the point: the board changes the site, not their browser.
-// Swap this module for a database later; callers only see read/write.
+// texts …) is one JSON file; until a collection is edited, its seed from
+// src/lib/data is used. Swap this module for a database later; callers only
+// see read/write.
+//
+// DEMO: every visitor gets a private sandbox. The first save creates a
+// session cookie naming it, and that visitor's edits and uploads live in
+// .data/sandboxes/<id>/ — nobody else sees them, and they are gone when the
+// browser is closed (sandboxes idle for SANDBOX_TTL are deleted). On the real
+// site the board's edits are of course seen by everyone.
 
 const ROOT = process.env.CONTENT_DIR ?? path.join(process.cwd(), ".data");
-const CONTENT = path.join(ROOT, "content");
-const FILES = path.join(ROOT, "files");
+const SANDBOXES = path.join(ROOT, "sandboxes");
+const SANDBOX_COOKIE = "tb_demo_sandbox";
+const SANDBOX_TTL = 12 * 60 * 60 * 1000;
+/** Uploads allowed per visitor, so the demo can't fill the disk. */
+const SANDBOX_UPLOAD_LIMIT = 50 * 1024 * 1024;
+
+type Sandbox = { dir: string; content: string; files: string };
+
+const sandboxAt = (id: string): Sandbox => {
+  const dir = path.join(SANDBOXES, id);
+  return { dir, content: path.join(dir, "content"), files: path.join(dir, "files") };
+};
+
+/** This visitor's sandbox, or null when they haven't saved anything yet. */
+async function currentSandbox(): Promise<Sandbox | null> {
+  const id = (await cookies()).get(SANDBOX_COOKIE)?.value;
+  return id && /^[a-f0-9]{24}$/.test(id) ? sandboxAt(id) : null;
+}
+
+/**
+ * This visitor's sandbox, created on first write. Only callable where cookies
+ * can be set (server actions, route handlers).
+ */
+async function writableSandbox(): Promise<Sandbox> {
+  const existing = await currentSandbox();
+  if (existing) {
+    await mkdir(existing.dir, { recursive: true });
+    const now = new Date();
+    await utimes(existing.dir, now, now);
+    return existing;
+  }
+  const id = randomBytes(12).toString("hex");
+  // No maxAge: a session cookie, so the sandbox ends with the browser session.
+  (await cookies()).set(SANDBOX_COOKIE, id, { httpOnly: true, sameSite: "lax", path: "/" });
+  await sweepSandboxes();
+  const sb = sandboxAt(id);
+  await mkdir(sb.dir, { recursive: true });
+  return sb;
+}
+
+/** Delete sandboxes nobody has written to for SANDBOX_TTL. */
+async function sweepSandboxes() {
+  let ids: string[];
+  try {
+    ids = await readdir(SANDBOXES);
+  } catch {
+    return;
+  }
+  const cutoff = Date.now() - SANDBOX_TTL;
+  await Promise.all(
+    ids.map(async (id) => {
+      const dir = path.join(SANDBOXES, id);
+      try {
+        if ((await stat(dir)).mtimeMs < cutoff) await rm(dir, { recursive: true, force: true });
+      } catch {
+        // Gone already.
+      }
+    }),
+  );
+}
 
 const memo = new Map<string, { mtimeMs: number; value: unknown }>();
 
-const fileOf = (key: string) => {
+const fileOf = (sb: Sandbox, key: string) => {
   if (!/^[a-z0-9-]+$/.test(key)) throw new Error(`Bad collection key: ${key}`);
-  return path.join(CONTENT, `${key}.json`);
+  return path.join(sb.content, `${key}.json`);
 };
 
 /**
@@ -29,18 +92,20 @@ const fileOf = (key: string) => {
 export async function readCollection<T>(key: string, seed: () => T): Promise<T> {
   // Content can change at any time — never bake it into a prerendered page.
   await connection();
-  const file = fileOf(key);
+  const sb = await currentSandbox();
+  if (!sb) return structuredClone(seed());
+  const file = fileOf(sb, key);
   let mtimeMs: number;
   try {
     mtimeMs = (await stat(file)).mtimeMs;
   } catch {
     return structuredClone(seed());
   }
-  const hit = memo.get(key);
+  const hit = memo.get(file);
   if (hit?.mtimeMs === mtimeMs) return structuredClone(hit.value as T);
   try {
     const value = JSON.parse(await readFile(file, "utf8")) as T;
-    memo.set(key, { mtimeMs, value });
+    memo.set(file, { mtimeMs, value });
     return structuredClone(value);
   } catch {
     return structuredClone(seed());
@@ -49,29 +114,33 @@ export async function readCollection<T>(key: string, seed: () => T): Promise<T> 
 
 /** Replace a collection. Written atomically (temp file + rename). */
 export async function writeCollection<T>(key: string, value: T) {
-  const file = fileOf(key);
-  await mkdir(CONTENT, { recursive: true });
+  const sb = await writableSandbox();
+  const file = fileOf(sb, key);
+  await mkdir(sb.content, { recursive: true });
   const tmp = `${file}.${randomBytes(4).toString("hex")}.tmp`;
   await writeFile(tmp, JSON.stringify(value, null, 2), "utf8");
   await rename(tmp, file);
-  memo.delete(key);
+  memo.delete(file);
 }
 
-/** Whether the board has edited a collection (false = still the seed). */
+/** Whether a collection has been edited (false = still the seed). */
 export async function isEdited(key: string) {
+  const sb = await currentSandbox();
+  if (!sb) return false;
   try {
-    await stat(fileOf(key));
+    await stat(fileOf(sb, key));
     return true;
   } catch {
     return false;
   }
 }
 
-/** Forget every edit and upload — the site goes back to its seed content. */
+/** Forget this visitor's edits and uploads — the site goes back to its seed content. */
 export async function resetContent() {
-  await rm(CONTENT, { recursive: true, force: true });
-  await rm(FILES, { recursive: true, force: true });
-  memo.clear();
+  const sb = await currentSandbox();
+  if (!sb) return;
+  await rm(sb.dir, { recursive: true, force: true });
+  for (const k of memo.keys()) if (k.startsWith(sb.dir)) memo.delete(k);
 }
 
 // ───────────────────────── Uploaded files ─────────────────────────
@@ -124,9 +193,15 @@ export async function saveUpload(
         : "Filtypen stöds inte. Använd en bild i JPG, PNG eller WebP.",
     );
   }
+  const sb = await writableSandbox();
+  if ((await uploadedBytes(sb)) + buf.length > SANDBOX_UPLOAD_LIMIT) {
+    throw new UploadError(
+      `Demon tillåter högst ${SANDBOX_UPLOAD_LIMIT / 1024 / 1024} MB uppladdat per besök. Ta bort något först, eller återställ innehållet.`,
+    );
+  }
   const id = `${randomBytes(6).toString("hex")}.${sig.ext}`;
-  await mkdir(FILES, { recursive: true });
-  await writeFile(path.join(FILES, id), buf);
+  await mkdir(sb.files, { recursive: true });
+  await writeFile(path.join(sb.files, id), buf);
   return { id, name: file.name || id, bytes: buf.length, type: sig.type };
 }
 
@@ -134,29 +209,37 @@ export async function saveUpload(
 export async function readUpload(id: string) {
   const m = /^[a-f0-9]{12}\.([a-z]+)$/.exec(id);
   const type = m && typeByExt[m[1]];
-  if (!type) return null;
+  const sb = await currentSandbox();
+  if (!type || !sb) return null;
   try {
-    return { bytes: await readFile(path.join(FILES, id)), type };
+    return { bytes: await readFile(path.join(sb.files, id)), type };
   } catch {
     return null;
   }
 }
 
 export async function deleteUpload(id: string) {
-  if (!/^[a-f0-9]{12}\.[a-z]+$/.test(id)) return;
-  await rm(path.join(FILES, id), { force: true });
+  const sb = await currentSandbox();
+  if (!sb || !/^[a-f0-9]{12}\.[a-z]+$/.test(id)) return;
+  await rm(path.join(sb.files, id), { force: true });
 }
 
-/** Number of stored uploads (for the admin's reset dialog). */
-export async function uploadCount() {
+async function uploadedBytes(sb: Sandbox) {
   try {
-    return (await readdir(FILES)).length;
+    const names = await readdir(sb.files);
+    const sizes = await Promise.all(names.map(async (n) => (await stat(path.join(sb.files, n))).size));
+    return sizes.reduce((a, b) => a + b, 0);
   } catch {
     return 0;
   }
 }
 
-/** Public URL of an uploaded image. PDFs are served with an access check instead (see /dokument). */
+/**
+ * URL of an uploaded image. PDFs are served with an access check instead (see
+ * /dokument). Uploads live in the visitor's sandbox, which the image
+ * optimizer can't see — render them with `unoptimized={isUploadUrl(src)}`
+ * (lib/uploads.ts).
+ */
 export const uploadUrl = (id: string) => `/filer/${id}`;
 
 /** "214 kB", "1,2 MB" */
