@@ -207,6 +207,7 @@ export const news: NewsItem[] = [
       capacity: 40,
       registered: 26,
       cta: "Välj funktionärspass",
+      hint: "Alla funktionärer bjuds på lunch efter loppet.",
       date: "2026-11-07",
       deadlineTitle: "Funktionär Jämjöhalvan",
       signupTitle: "Jämjöhalvan – funktionär",
@@ -344,11 +345,11 @@ export const news: NewsItem[] = [
   },
 ];
 
-/** Newest first; hides members-only items for guests. */
+/** Newest first (by date, then time of day); hides members-only items for guests. */
 export function visibleNews(all: NewsItem[], opts: { members?: boolean } = {}) {
   return all
     .filter((n) => opts.members || !n.membersOnly)
-    .sort((a, b) => b.date.localeCompare(a.date));
+    .sort((a, b) => b.date.localeCompare(a.date) || (b.time ?? "").localeCompare(a.time ?? ""));
 }
 
 export function commentCount(n: NewsItem) {

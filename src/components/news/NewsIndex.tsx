@@ -2,13 +2,13 @@ import "./news.css";
 import { Fragment, type CSSProperties, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { IconLock, IconPin, IconStar } from "@/components/icons";
+import { IconLock, IconPin, IconPlus, IconStar } from "@/components/icons";
 import { ArrowLink, SpeedLines } from "@/components/ui";
 import { getAllNews } from "@/lib/content/news";
 import { commentCount, newsCategories, visibleNews, type NewsCategory, type NewsItem } from "@/lib/data/news";
 import type { DemoUser } from "@/lib/data/users";
 import { dayMonth } from "@/lib/format";
-import { LocalNews, NewNewsButton } from "./BoardNews";
+import { isUploadUrl } from "@/lib/uploads";
 import { IconRss } from "./icons";
 import { CommentCount, SignupCount } from "./LiveCounts";
 import { NotifySettingsButton } from "./NotifySettings";
@@ -18,6 +18,9 @@ import { categorySlug, newsDate, openDeadlines, pinnedNews, plural } from "./uti
 const PAGE_SIZE = 6;
 
 type Filters = { category?: NewsCategory; year?: number; showAll?: boolean };
+
+/** The page's editable texts (lib/data/pages/nyheter.ts). */
+type Texts = (key: string) => string;
 
 /** /nyheter with the given filters; links keep the other filters. */
 function hrefWith(current: Filters, next: Partial<Filters>) {
@@ -33,12 +36,14 @@ function hrefWith(current: Filters, next: Partial<Filters>) {
 export async function NewsIndex({
   user,
   today,
+  t,
   category,
   year,
   showAll = false,
 }: {
   user: DemoUser | null;
   today: string;
+  t: Texts;
 } & Filters) {
   const members = !!user;
   const all = await getAllNews();
@@ -61,14 +66,13 @@ export async function NewsIndex({
         <div className="min-w-0">
           <h1 className="run-in m-0 flex items-center gap-3.5 text-[34px] leading-tight font-extrabold tracking-[-0.8px] md:text-[40px]">
             <span aria-hidden="true" className="skew-bar bg-orange" />
-            Nyheter
+            {t("hero.title")}
           </h1>
           <p
-            className="run-in m-0 mt-1 max-w-[640px] text-[16px] text-muted"
+            className="run-in m-0 mt-1 max-w-[640px] text-[16px] whitespace-pre-line text-muted"
             style={{ "--i": 1 } as CSSProperties}
           >
-            Meddelanden från styrelsen, tränarna och arrangörerna. Som inloggad ser du även nyheter som bara är för
-            medlemmar.
+            {t("hero.intro")}
           </p>
         </div>
         <div className="run-in flex flex-wrap gap-2.5" style={{ "--i": 2 } as CSSProperties}>
@@ -77,10 +81,19 @@ export async function NewsIndex({
           ) : (
             <Link href="/logga-in?next=/nyheter" className="btn btn-outline rounded-[10px] border-[#cfc8c4]">
               <IconLock size={18} />
-              Logga in för medlemsnyheter
+              {t("hero.login")}
             </Link>
           )}
-          {user?.role === "board" && <NewNewsButton />}
+          {/* Board members write news in the admin — the one way to post. */}
+          {user?.role === "board" && (
+            <Link
+              href="/admin/nyheter/ny"
+              className="btn rounded-[10px] bg-orange font-extrabold text-ink hover:text-ink hover:shadow-[0_8px_18px_-6px_rgb(238_137_21/0.7)]"
+            >
+              <IconPlus size={18} strokeWidth={2.4} />
+              Skriv en nyhet
+            </Link>
+          )}
         </div>
       </div>
 
@@ -93,7 +106,7 @@ export async function NewsIndex({
             className="m-0 flex items-center gap-1.5 text-[14px] font-extrabold tracking-[1px] text-muted uppercase"
           >
             <IconPin size={16} strokeWidth={2.2} className="text-orange-dark" />
-            Viktigt nu
+            {t("list.pinned")}
           </h2>
           <div className="flex flex-wrap gap-5">
             {pinned.map((n, i) => (
@@ -110,18 +123,16 @@ export async function NewsIndex({
           className="flex min-w-0 flex-[999_1_560px] scroll-mt-6 flex-col gap-3.5"
         >
           <h2 id="senaste-rubrik" className="m-0 text-[24px] font-extrabold">
-            {viewYear === currentYear ? "Senaste" : `Nyheter ${viewYear}`}
+            {viewYear === currentYear ? t("list.latest") : `${t("hero.title")} ${viewYear}`}
             {category && <span className="text-muted"> · {category}</span>}
           </h2>
-
-          {viewYear === currentYear && <LocalNews members={members} category={category} />}
 
           {shown.map((n, i) => (
             <Fragment key={n.slug}>
               <NewsRow n={n} today={today} i={i} me={user?.id} />
               {/* Guests: the invite sits high up in the list, not below the fold. */}
               {i === Math.min(1, shown.length - 1) && !members && hiddenForGuests > 0 && (
-                <GuestCard hidden={hiddenForGuests} />
+                <GuestCard hidden={hiddenForGuests} t={t} />
               )}
             </Fragment>
           ))}
@@ -143,15 +154,15 @@ export async function NewsIndex({
               scroll={false}
               className="btn btn-outline mt-1 self-center rounded-[10px] border-[#cfc8c4]"
             >
-              Visa fler nyheter
+              {t("list.more")}
             </Link>
           )}
         </section>
 
         <aside className="flex min-w-0 flex-[1_1_300px] flex-col gap-5">
-          <Deadlines items={visible} today={today} />
-          <YearPicker filters={filters} viewYear={viewYear} currentYear={currentYear} />
-          <StayUpdated me={user?.id} />
+          <Deadlines items={visible} today={today} title={t("aside.deadlines")} />
+          <YearPicker filters={filters} viewYear={viewYear} currentYear={currentYear} title={t("aside.archive")} />
+          <StayUpdated me={user?.id} t={t} />
         </aside>
       </div>
     </div>
@@ -236,6 +247,7 @@ function PinnedCard({ n, today, wide, i, me }: { n: NewsItem; today: string; wid
       alt={n.imageAlt ?? ""}
       fill
       sizes={wide ? "(min-width: 768px) 280px, 100vw" : "(min-width: 768px) 460px, 100vw"}
+      unoptimized={isUploadUrl(n.image)}
       className="object-cover transition-[scale] duration-700 ease-sprint group-hover:scale-105"
       style={{ objectPosition: n.imagePosition ?? "50% 15%" }}
     />
@@ -374,6 +386,7 @@ function NewsRow({ n, today, i, me }: { n: NewsItem; today: string; i: number; m
             alt={n.imageAlt ?? ""}
             fill
             sizes="(min-width: 640px) 220px, 100px"
+            unoptimized={isUploadUrl(n.image)}
             className="diag-img object-cover group-hover:scale-105"
             style={{ objectPosition: n.imagePosition }}
           />
@@ -410,34 +423,41 @@ function NewsRow({ n, today, i, me }: { n: NewsItem; today: string; i: number; m
   );
 }
 
-function GuestCard({ hidden }: { hidden: number }) {
+function GuestCard({ hidden, t }: { hidden: number; t: Texts }) {
   return (
     <div
       data-reveal="up"
       className="relative flex flex-wrap items-center gap-4 overflow-hidden rounded-xl border border-dashed border-purple/40 bg-purple-soft px-5 py-4"
     >
-      <span className="flex h-11 w-11 flex-none -rotate-6 items-center justify-center rounded-full bg-purple text-white">
+      <span className="relative flex h-11 w-11 flex-none -rotate-6 items-center justify-center rounded-full bg-purple text-white">
         <IconLock size={20} />
+        <span
+          aria-hidden="true"
+          className="absolute -top-1.5 -right-2 flex h-6 min-w-6 rotate-6 items-center justify-center rounded-full border-2 border-purple-soft bg-orange px-1 text-[12px] font-extrabold text-ink"
+        >
+          {hidden}
+        </span>
       </span>
       <div className="flex min-w-0 flex-[1_1_240px] flex-col">
-        <p className="m-0 font-extrabold">{plural(hidden, "nyhet till är", "nyheter till är")} bara för medlemmar</p>
-        <p className="m-0 text-[14px] text-muted">
-          Anmälningar, funktionärspass och protokoll från styrelsen syns när du loggat in.
+        <p className="m-0 font-extrabold">
+          {t("guest.title")}
+          <span className="sr-only"> ({plural(hidden, "nyhet", "nyheter")})</span>
         </p>
+        <p className="m-0 text-[14px] whitespace-pre-line text-muted">{t("guest.text")}</p>
       </div>
       <Link href="/logga-in?next=/nyheter" className="btn btn-dark">
-        Logga in
+        {t("guest.button")}
       </Link>
     </div>
   );
 }
 
-function Deadlines({ items, today }: { items: NewsItem[]; today: string }) {
+function Deadlines({ items, today, title }: { items: NewsItem[]; today: string; title: string }) {
   const open = openDeadlines(items, today);
   if (!open.length) return null;
   return (
     <section className="card flex flex-col gap-3 p-5" data-reveal="right">
-      <h2 className="m-0 text-[18px] font-extrabold">Kommande sista dagar</h2>
+      <h2 className="m-0 text-[18px] font-extrabold">{title}</h2>
       <ul className="m-0 flex list-none flex-col gap-1 p-0 text-[15px]">
         {open.map((n) => {
           const reg = n.registration!;
@@ -462,7 +482,17 @@ function Deadlines({ items, today }: { items: NewsItem[]; today: string }) {
   );
 }
 
-function YearPicker({ filters, viewYear, currentYear }: { filters: Filters; viewYear: number; currentYear: number }) {
+function YearPicker({
+  filters,
+  viewYear,
+  currentYear,
+  title,
+}: {
+  filters: Filters;
+  viewYear: number;
+  currentYear: number;
+  title: string;
+}) {
   const years = [0, 1, 2, 3].map((d) => currentYear - d);
   return (
     <section
@@ -470,7 +500,7 @@ function YearPicker({ filters, viewYear, currentYear }: { filters: Filters; view
       data-reveal="right"
       style={{ "--reveal-i": 1 } as CSSProperties}
     >
-      <h2 className="m-0 text-[18px] font-extrabold">Tidigare nyheter</h2>
+      <h2 className="m-0 text-[18px] font-extrabold">{title}</h2>
       <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
         {years.map((y) => {
           const active = y === viewYear;
@@ -496,7 +526,7 @@ function YearPicker({ filters, viewYear, currentYear }: { filters: Filters; view
   );
 }
 
-function StayUpdated({ me }: { me?: string }) {
+function StayUpdated({ me, t }: { me?: string; t: Texts }) {
   return (
     <section
       data-reveal="right"
@@ -512,16 +542,14 @@ function StayUpdated({ me }: { me?: string }) {
           [260, 220, 300, 158],
         ]}
       />
-      <h2 className="relative m-0 text-[18px] font-extrabold">Missa inget</h2>
-      <p className="relative m-0 text-[14px] text-mist">
-        Få nyheter per mejl direkt, som dagssammanfattning eller veckobrev – du väljer per kategori.
-      </p>
+      <h2 className="relative m-0 text-[18px] font-extrabold">{t("notify.title")}</h2>
+      <p className="relative m-0 text-[14px] whitespace-pre-line text-mist">{t("notify.text")}</p>
       <div className="relative flex">
         {me ? (
-          <NotifySettingsButton me={me} variant="primary" label="Ställ in aviseringar" />
+          <NotifySettingsButton me={me} variant="primary" label={t("notify.button")} />
         ) : (
           <Link href="/logga-in?next=/nyheter" className="btn btn-primary font-extrabold">
-            Logga in och ställ in
+            {t("notify.login")}
           </Link>
         )}
       </div>
@@ -530,7 +558,7 @@ function StayUpdated({ me }: { me?: string }) {
         className="relative inline-flex items-center gap-1.5 self-start text-[14px] text-orange underline underline-offset-2 hover:text-orange"
       >
         <IconRss size={16} />
-        Nyheter via RSS
+        {t("notify.rss")}
       </a>
     </section>
   );

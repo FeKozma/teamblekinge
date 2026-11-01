@@ -7,6 +7,7 @@ import { ArrowLink, Avatar, SpeedLines } from "@/components/ui";
 import { listNews } from "@/lib/content/news";
 import { commentCount, type NewsItem } from "@/lib/data/news";
 import { people, type DemoUser } from "@/lib/data/users";
+import { isUploadUrl } from "@/lib/uploads";
 import { Discussion } from "./Discussion";
 import { NotifySettingsButton } from "./NotifySettings";
 import { PdfIcon } from "./PdfIcon";
@@ -15,8 +16,11 @@ import { RegistrationBox } from "./Registration";
 import { ShareButton } from "./ShareButton";
 import { isPinned, newsDate, plural } from "./util";
 
+/** The page's editable texts (lib/data/pages/nyheter.ts). */
+type Texts = (key: string) => string;
+
 /** One news item (/nyheter/[slug]), per the "Nyhet med anmälan" drawup. */
-export function Article({ n, user, today }: { n: NewsItem; user: DemoUser | null; today: string }) {
+export function Article({ n, user, today, t }: { n: NewsItem; user: DemoUser | null; today: string; t: Texts }) {
   const members = !!user;
   const gated = !!n.membersOnly && !members;
   const author = people[n.author];
@@ -83,6 +87,7 @@ export function Article({ n, user, today }: { n: NewsItem; user: DemoUser | null
                 fill
                 priority
                 sizes="(min-width: 768px) 760px, 100vw"
+                unoptimized={isUploadUrl(n.image)}
                 className="object-cover"
                 style={{
                   objectPosition: n.imagePosition ?? "50% 20%",
@@ -93,12 +98,12 @@ export function Article({ n, user, today }: { n: NewsItem; user: DemoUser | null
           )}
 
           {gated ? (
-            <MembersOnly n={n} loginHref={loginHref} />
+            <MembersOnly n={n} loginHref={loginHref} t={t} />
           ) : (
             <>
               <div className="flex flex-col gap-3.5 text-[16px] leading-[1.6] md:text-[17px]">
-                {n.body.map((p) => (
-                  <p key={p.slice(0, 40)} className="m-0">
+                {n.body.map((p, i) => (
+                  <p key={i} className="m-0 whitespace-pre-line">
                     {p}
                   </p>
                 ))}
@@ -167,12 +172,10 @@ export function Article({ n, user, today }: { n: NewsItem; user: DemoUser | null
                 [260, 200, 300, 144],
               ]}
             />
-            <h2 className="relative m-0 text-[18px] font-extrabold">Missa inget</h2>
-            <p className="relative m-0 text-[14px] text-mist">
-              Välj vilka kategorier du vill ha per mejl – direkt, som dagssammanfattning eller veckobrev.
-            </p>
+            <h2 className="relative m-0 text-[18px] font-extrabold">{t("notify.title")}</h2>
+            <p className="relative m-0 text-[14px] whitespace-pre-line text-mist">{t("notify.text")}</p>
             <div className="relative flex">
-              <NotifySettingsButton me={user.id} variant="primary" label="Ställ in aviseringar" />
+              <NotifySettingsButton me={user.id} variant="primary" label={t("notify.button")} />
             </div>
           </section>
         )}
@@ -182,7 +185,7 @@ export function Article({ n, user, today }: { n: NewsItem; user: DemoUser | null
 }
 
 /** Guests on a members-only item: the teaser, then a way in. */
-function MembersOnly({ n, loginHref }: { n: NewsItem; loginHref: string }) {
+function MembersOnly({ n, loginHref, t }: { n: NewsItem; loginHref: string; t: Texts }) {
   return (
     <>
       <p className="m-0 text-[17px] leading-[1.6]">{n.excerpt}</p>
@@ -209,11 +212,9 @@ function MembersOnly({ n, loginHref }: { n: NewsItem; loginHref: string }) {
           <span className="flex h-10 w-10 flex-none -rotate-6 items-center justify-center rounded-full bg-orange text-ink">
             <IconLock size={20} />
           </span>
-          Den här nyheten är bara för medlemmar
+          {t("locked.title")}
         </span>
-        <p className="relative m-0 text-[15px] text-mist">
-          Logga in med din e-postadress – vi skickar en inloggningslänk, inget lösenord behövs.
-        </p>
+        <p className="relative m-0 text-[15px] whitespace-pre-line text-mist">{t("locked.text")}</p>
         <div className="relative flex flex-wrap gap-3">
           <Link href={loginHref} className="btn btn-primary font-extrabold">
             Logga in
