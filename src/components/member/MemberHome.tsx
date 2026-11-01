@@ -357,7 +357,7 @@ async function WeekTraining({
             <Pill tone={g.tone} className="mt-px w-[108px] flex-none justify-center">
               {g.short}
             </Pill>
-            <span className="text-[14px] font-semibold">{plan?.[g.id] ?? "[Pass enligt terminsplanen]"}</span>
+            <span className="text-[14px] font-semibold">{plan?.[g.id] || "[Pass enligt terminsplanen]"}</span>
           </li>
         ))}
       </ul>
