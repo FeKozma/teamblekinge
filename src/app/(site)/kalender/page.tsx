@@ -29,8 +29,15 @@ export default async function KalenderPage() {
         kicker={t("hero.kicker")}
         title={
           <>
-            {t("hero.title")}{" "}
-            <span className="tilt-pop inline-block translate-y-0.5 -rotate-2 text-orange">{t("hero.titleAccent")}</span>
+            {t("hero.title")}
+            {t("hero.titleAccent") && (
+              <>
+                {" "}
+                <span className="tilt-pop inline-block translate-y-0.5 -rotate-2 text-orange">
+                  {t("hero.titleAccent")}
+                </span>
+              </>
+            )}
           </>
         }
         intro={member ? t("hero.introMember") : t("hero.introGuest")}

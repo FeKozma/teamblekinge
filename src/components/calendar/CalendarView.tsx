@@ -2,7 +2,7 @@
 
 import "./calendar.css";
 import Link from "next/link";
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { basePost, runEvent, useMyPosts, useRunJoiners } from "@/components/feed/feed-store";
 import { IconLock, IconMapPin, IconPencil } from "@/components/icons";
 import { DateBadge, Pill, SectionHeading } from "@/components/ui";
@@ -26,6 +26,13 @@ const STRIP_DAYS = 14;
 const PAGE_DAYS = 10;
 
 const isLocked = (e: ClubEvent) => !!e.membersOnly || e.source === "flode";
+
+function subscribeHash(onChange: () => void) {
+  window.addEventListener("hashchange", onChange);
+  return () => window.removeEventListener("hashchange", onChange);
+}
+/** The day in the URL's #dag-YYYY-MM-DD, if any. */
+const hashDate = () => /^#dag-(\d{4}-\d{2}-\d{2})$/.exec(window.location.hash)?.[1] ?? null;
 
 /** Where the board edits an event; löprundor belong to their poster in Klubbflödet. */
 function adminHref(e: ClubEvent) {
@@ -73,8 +80,17 @@ export function CalendarView({
   const dayKeys = [...byDay.keys()];
   const stripEnd = addDays(today, STRIP_DAYS - 1);
   // Always render every day the strip links to, then page through the rest.
-  const shownDays = dayKeys.slice(0, Math.max(limit, dayKeys.filter((d) => d <= stripEnd).length));
+  // …and, arriving at #dag-… (e.g. "Visa i kalendern" from the admin), up to that day.
+  const hashDay = useSyncExternalStore(subscribeHash, hashDate, () => null);
+  const shownDays = dayKeys.slice(
+    0,
+    Math.max(limit, dayKeys.filter((d) => d <= stripEnd).length, hashDay ? dayKeys.indexOf(hashDay) + 1 : 0),
+  );
   const hiddenCount = dayKeys.slice(shownDays.length).reduce((n, d) => n + byDay.get(d)!.length, 0);
+
+  useEffect(() => {
+    if (hashDay) document.getElementById(`dag-${hashDay}`)?.scrollIntoView();
+  }, [hashDay]);
 
   const months: { key: string; days: string[] }[] = [];
   for (const d of shownDays) {

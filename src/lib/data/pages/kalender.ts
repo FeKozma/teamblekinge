@@ -4,6 +4,13 @@ export const kalenderTexts: PageTextsDef = {
   id: "kalender",
   label: "Kalender",
   href: "/kalender",
+  related: [
+    {
+      href: "/admin/kalender",
+      label: "Kalendern",
+      text: "Träningar, möten, lopp och resor lägger du in under Kalender.",
+    },
+  ],
   sections: [
     {
       title: "Överst på sidan",
@@ -15,6 +22,7 @@ export const kalenderTexts: PageTextsDef = {
           label: "Rubrikens slut, i orange",
           value: "nästa runda",
           hint: "Visas lutande i orange direkt efter rubriken.",
+          optional: true,
         },
         {
           key: "hero.introGuest",

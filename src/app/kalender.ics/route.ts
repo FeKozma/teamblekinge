@@ -117,7 +117,8 @@ export async function GET(request: Request) {
     headers: {
       "content-type": "text/calendar; charset=utf-8",
       "content-disposition": 'inline; filename="team-blekinge.ics"',
-      "cache-control": "public, max-age=3600",
+      // Board edits should reach the next fetch; calendar apps poll on their own schedule anyway.
+      "cache-control": "private, no-cache",
     },
   });
 }

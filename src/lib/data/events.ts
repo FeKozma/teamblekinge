@@ -140,8 +140,6 @@ export type EventSeries = {
   cancelled?: { date: string; reason?: string }[];
 };
 
-const SEASON = { from: "2026-10-26", until: "2027-01-03" };
-
 export const eventSeries: EventSeries[] = [
   {
     id: "halsa",
@@ -151,7 +149,8 @@ export const eventSeries: EventSeries[] = [
     place: "Klubblokalen, Tennvägen 11 A",
     kind: "traning",
     href: "/trana-med-oss#halsagruppen",
-    ...SEASON,
+    from: "2026-10-27",
+    until: "2026-12-29",
   },
   {
     id: "intervall",
@@ -162,7 +161,8 @@ export const eventSeries: EventSeries[] = [
     kind: "traning",
     note: "Långa och korta gruppen",
     href: "/trana-med-oss",
-    ...SEASON,
+    from: "2026-10-27",
+    until: "2026-12-29",
   },
   {
     id: "torsdagsgruppen",
@@ -173,7 +173,8 @@ export const eventSeries: EventSeries[] = [
     kind: "traning",
     note: "Promenad i Bastasjöskogen och fika",
     href: "/trana-med-oss#torsdagsgruppen",
-    ...SEASON,
+    from: "2026-10-29",
+    until: "2026-12-31",
   },
 ];
 
