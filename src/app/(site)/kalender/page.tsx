@@ -3,10 +3,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CalendarView } from "@/components/calendar/CalendarView";
 import { CopyIcsLink } from "@/components/calendar/CopyIcsLink";
-import { IconCalendar, IconPeople } from "@/components/icons";
+import { IconCalendar, IconPeople, IconPlus } from "@/components/icons";
 import { ArrowLink, Page, PageHero } from "@/components/ui";
 import { getEvents } from "@/lib/content/events";
+import { getPageTexts } from "@/lib/content/pages";
 import { isPublicEvent } from "@/lib/data/events";
+import { paragraphs } from "@/lib/data/pages";
 import { todayISO } from "@/lib/format";
 import { getSession } from "@/lib/session";
 
@@ -15,29 +17,32 @@ export const metadata: Metadata = { title: "Kalender" };
 // No drawup for this page — built in the same language as the rest: dark
 // slanted hero, a two-week strip that overlaps its edge, then the agenda.
 export default async function KalenderPage() {
-  const user = await getSession();
+  const [user, events, t] = await Promise.all([getSession(), getEvents({ cancelled: true }), getPageTexts("kalender")]);
   const member = !!user;
+  const board = user?.role === "board";
   const today = todayISO();
-  const upcoming = (await getEvents()).filter((e) => e.date >= today && (member || isPublicEvent(e)));
+  const upcoming = events.filter((e) => e.date >= today && (member || isPublicEvent(e)));
 
   return (
     <Page>
       <PageHero
-        kicker="Kalender"
+        kicker={t("hero.kicker")}
         title={
           <>
-            Nästa pass, nästa lopp,{" "}
-            <span className="tilt-pop inline-block translate-y-0.5 -rotate-2 text-orange">nästa runda</span>
+            {t("hero.title")}{" "}
+            <span className="tilt-pop inline-block translate-y-0.5 -rotate-2 text-orange">{t("hero.titleAccent")}</span>
           </>
         }
-        intro={
-          member
-            ? "Träningar, våra egna lopp, möten och resor – och löprundorna från Klubbflödet."
-            : "Träningar, våra egna lopp, möten och resor. Prenumerera, så hamnar allt i din egen kalender."
-        }
+        intro={member ? t("hero.introMember") : t("hero.introGuest")}
       >
         <div className="run-in mt-1 flex flex-wrap gap-3" style={{ "--i": 3 } as CSSProperties}>
-          <a href="/kalender.ics" className="btn btn-primary btn-lg flex-1 sm:flex-none">
+          {board && (
+            <Link href="/admin/kalender/ny" className="btn btn-primary btn-lg flex-1 sm:flex-none">
+              <IconPlus size={20} />
+              Lägg in i kalendern
+            </Link>
+          )}
+          <a href="/kalender.ics" className={`btn btn-lg flex-1 sm:flex-none ${board ? "btn-outline-light" : "btn-primary"}`}>
             <IconCalendar size={20} />
             Prenumerera (iCal)
           </a>
@@ -50,20 +55,20 @@ export default async function KalenderPage() {
         today={today}
         member={member}
         me={user?.id ?? null}
+        editable={board}
         aside={
           <>
             <section className="card flex flex-col gap-2.5 p-5" data-reveal="right">
               <h2 className="m-0 flex items-center gap-2.5 text-[19px] font-extrabold">
                 <IconCalendar size={20} className="text-orange-dark" />
-                Prenumerera
+                {t("subscribe.heading")}
               </h2>
-              <p className="m-0 text-[15px] text-muted">
-                Kopiera kalenderlänken och lägg till den i Google Kalender, Outlook eller Kalender på mobilen – då
-                uppdateras den av sig själv.
-              </p>
-              <p className="m-0 text-[13px] text-muted">
-                Prenumerationen innehåller det som är öppet för alla, inte medlemmarnas löprundor.
-              </p>
+              {paragraphs(t("subscribe.text")).map((p) => (
+                <p key={p} className="m-0 text-[15px] text-muted">
+                  {p}
+                </p>
+              ))}
+              <p className="m-0 text-[13px] text-muted">{t("subscribe.note")}</p>
             </section>
             {member ? (
               <section
@@ -73,13 +78,15 @@ export default async function KalenderPage() {
               >
                 <h2 className="m-0 flex items-center gap-2.5 text-[19px] font-extrabold">
                   <IconPeople size={20} />
-                  Löprundor från flödet
+                  {t("members.heading")}
                 </h2>
-                <p className="m-0 text-[15px]">
-                  När någon lägger upp en löprunda i Klubbflödet hamnar den här, med vilka som hänger med.
-                </p>
+                {paragraphs(t("members.text")).map((p) => (
+                  <p key={p} className="m-0 text-[15px]">
+                    {p}
+                  </p>
+                ))}
                 <Link href="/flodet" className="btn btn-dark self-start">
-                  Lägg upp en löprunda
+                  {t("members.button")}
                 </Link>
               </section>
             ) : (
@@ -88,10 +95,12 @@ export default async function KalenderPage() {
                 data-reveal="right"
                 style={{ "--reveal-i": 1 } as CSSProperties}
               >
-                <h2 className="m-0 text-[19px] font-extrabold">Medlem?</h2>
-                <p className="m-0 text-[15px] text-muted">
-                  Logga in för att se medlemmarnas löprundor, styrelsemöten och resor i kalendern.
-                </p>
+                <h2 className="m-0 text-[19px] font-extrabold">{t("guests.heading")}</h2>
+                {paragraphs(t("guests.text")).map((p) => (
+                  <p key={p} className="m-0 text-[15px] text-muted">
+                    {p}
+                  </p>
+                ))}
                 <ArrowLink href="/logga-in?next=/kalender">Logga in</ArrowLink>
               </section>
             )}
