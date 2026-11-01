@@ -10,7 +10,16 @@ type Run = { date: string; place: string; note?: string };
  * run is filled orange, with the runner standing where the season is now:
  * a track you have already run. Horizontal from md, vertical on phones.
  */
-export function LongRunTrack({ runs, today }: { runs: Run[]; today: string }) {
+export function LongRunTrack({
+  runs,
+  today,
+  texts,
+}: {
+  runs: Run[];
+  today: string;
+  /** Page texts: "Nästa långpass:", and what to say once the year's runs are done. */
+  texts: { next: string; done: string; doneMore: string };
+}) {
   const n = runs.length;
   const lastPast = runs.reduce((acc, r, i) => (r.date < today ? i : acc), -1);
   const progress = lastPast < 0 ? 0 : n > 1 ? lastPast / (n - 1) : 1;
@@ -80,11 +89,11 @@ export function LongRunTrack({ runs, today }: { runs: Run[]; today: string }) {
         <IconFlag size={20} className="mt-0.5 flex-none text-orange-dark" />
         {next ? (
           <span>
-            <strong>Nästa långpass:</strong> {longDate(next.date)} · {next.place}
+            <strong>{texts.next}</strong> {longDate(next.date)} · {next.place}
           </span>
         ) : (
           <span>
-            <strong>Årets alla långpass är sprungna.</strong> [Datum för långpassen 2027 publiceras här]
+            <strong>{texts.done}</strong> {texts.doneMore}
           </span>
         )}
       </p>

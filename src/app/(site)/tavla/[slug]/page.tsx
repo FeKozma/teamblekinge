@@ -9,17 +9,21 @@ import { Band, BandHeading, wrap } from "@/components/public/layout";
 import { IconArrowLeft, IconExternal } from "@/components/public/icons";
 import { raceCountdownLabel } from "@/components/public/RaceCard";
 import { Page, SectionHeading, SpeedLines } from "@/components/ui";
-import { club } from "@/lib/data/club";
-import { getRace, races, type Race } from "@/lib/data/races";
+import { getClub } from "@/lib/content/club";
+import { getPageTexts } from "@/lib/content/pages";
+import { getRace, getRaces } from "@/lib/content/races";
+import type { Race } from "@/lib/data/races";
 import { todayISO } from "@/lib/format";
+import { isUploadUrl } from "@/lib/uploads";
 
-export function generateStaticParams() {
-  return races.map((r) => ({ slug: r.slug }));
-}
+// No generateStaticParams: races are edited in the admin (and new ones added),
+// so each page is rendered from the content store when it's requested.
+
+type Texts = (key: string) => string;
 
 export async function generateMetadata({ params }: PageProps<"/tavla/[slug]">): Promise<Metadata> {
   const { slug } = await params;
-  const race = getRace(slug);
+  const race = await getRace(slug);
   if (!race) return {};
   return {
     title: race.name,
@@ -27,43 +31,28 @@ export async function generateMetadata({ params }: PageProps<"/tavla/[slug]">): 
   };
 }
 
-// How the races hang together, for the cross-links at the bottom.
-const related: Record<string, Record<string, string>> = {
-  jamjohalvan: {
-    "veteran-sm": "Veteran-SM i halvmaraton avgörs i Jämjöhalvan – kryssa i ”Delta i VSM” när du anmäler dig.",
-  },
-  "veteran-sm": {
-    jamjohalvan: "VSM springs i Jämjöhalvans halvmaraton – samma arena, start kl. 11:00. Anmälan görs via Jämjöhalvan.",
-    kustmaran: "Veteran-SM i maraton planeras på Kustmaran 2027.",
-  },
-  kustmaran: {
-    "veteran-sm": "Veteran-SM i maraton planeras här 2027.",
-  },
-};
-
-// Square posters are shown whole instead of cropped to a landscape frame.
-const posters = new Set(["/img/jamjohalvan-affisch.jpg"]);
-
 export default async function RacePage({ params }: PageProps<"/tavla/[slug]">) {
   const { slug } = await params;
-  const race = getRace(slug);
+  const [races, club, t] = await Promise.all([getRaces(), getClub(), getPageTexts("tavla")]);
+  const race = races.find((r) => r.slug === slug);
   if (!race) notFound();
   const today = todayISO();
   const upcoming = race.start.slice(0, 10) >= today;
+  const ladder = race.feeLadder?.periods.length && race.feeLadder.rows.length ? race.feeLadder : undefined;
 
   return (
     <Page>
-      <RaceHero race={race} upcoming={upcoming} />
-      <Distances race={race} />
-      {race.feeLadder && <FeeLadder ladder={race.feeLadder} />}
-      <Registration race={race} upcoming={upcoming} />
-      <Facts race={race} />
-      <MoreRaces race={race} today={today} />
+      <RaceHero race={race} upcoming={upcoming} t={t} />
+      <Distances race={race} t={t} />
+      {ladder && <FeeLadder ladder={ladder} t={t} />}
+      <Registration race={race} upcoming={upcoming} raceEmail={club.contact.raceEmail} t={t} />
+      <Facts race={race} t={t} />
+      <MoreRaces race={race} races={races} today={today} t={t} />
     </Page>
   );
 }
 
-function RaceHero({ race, upcoming }: { race: Race; upcoming: boolean }) {
+function RaceHero({ race, upcoming, t }: { race: Race; upcoming: boolean; t: Texts }) {
   const firstStart = race.distances[0]?.start;
   const kickerBg = race.tone === "purple" ? "bg-purple text-white" : "bg-orange text-ink";
   return (
@@ -88,7 +77,7 @@ function RaceHero({ race, upcoming }: { race: Race; upcoming: boolean }) {
             href="/tavla"
             className="run-in inline-flex items-center gap-1.5 self-start text-[15px] font-semibold text-mist no-underline hover:text-orange"
           >
-            <IconArrowLeft size={18} /> Alla lopp
+            <IconArrowLeft size={18} /> {t("race.back")}
           </Link>
           <span
             className={`run-in self-start px-3 py-1 text-[13px] font-extrabold tracking-[1px] uppercase [rotate:-2deg] ${kickerBg}`}
@@ -113,7 +102,7 @@ function RaceHero({ race, upcoming }: { race: Race; upcoming: boolean }) {
             {firstStart && (
               <li className="flex items-center gap-2">
                 <IconClock size={18} className="text-orange" />
-                Första start {firstStart}
+                {t("race.firstStart")} {firstStart}
               </li>
             )}
             <li className="flex items-center gap-2">
@@ -126,10 +115,10 @@ function RaceHero({ race, upcoming }: { race: Race; upcoming: boolean }) {
           </p>
           <div className="run-in mt-1 flex flex-wrap gap-3" style={{ "--i": 5 } as CSSProperties}>
             <a href="#anmalan" className="btn btn-primary btn-lg flex-1 sm:flex-none">
-              Anmälan
+              {t("race.signupButton")}
             </a>
             <a href="#distanser" className="btn btn-outline-light btn-lg flex-1 sm:flex-none">
-              Distanser & starttider
+              {t("race.distancesButton")}
             </a>
           </div>
         </div>
@@ -139,15 +128,17 @@ function RaceHero({ race, upcoming }: { race: Race; upcoming: boolean }) {
           <div className="relative z-[1] -mt-8 flex w-fit flex-col gap-2 rounded-md bg-ink-3/95 px-4 py-3 text-white shadow-[0_14px_30px_rgba(0,0,0,0.45)] ring-1 ring-ink-2 backdrop-blur [rotate:2deg] md:absolute md:-bottom-10 md:-left-6 md:mt-0">
             {upcoming ? (
               <>
-                <span className="text-[12px] font-extrabold tracking-[1px] text-orange uppercase">Start om</span>
+                <span className="text-[12px] font-extrabold tracking-[1px] text-orange uppercase">
+                  {t("race.countdown")}
+                </span>
                 <Countdown to={race.start} />
               </>
             ) : (
               <span className="flex items-center gap-2 text-[14px] font-bold">
                 <IconTrophy size={18} className="text-orange" />
-                Loppet är avgjort ·{" "}
+                {t("race.done")} ·{" "}
                 <Link href="/tavla#resultat" className="text-orange hover:text-orange">
-                  Resultat
+                  {t("race.resultsLink")}
                 </Link>
               </span>
             )}
@@ -164,12 +155,20 @@ function HeroImage({ race }: { race: Race }) {
       <div className="parallax relative mx-auto max-w-[460px] -rotate-3 pb-6">
         <span aria-hidden="true" className="hero-plate absolute top-5 -right-4 -bottom-0 left-5 rounded-md bg-purple" />
         <div className="tilt-pop relative flex h-[230px] items-center justify-center rounded-md bg-white p-6 sm:h-[300px]">
-          <Image src={race.image} alt={race.imageAlt} width={600} height={580} priority className="h-full w-auto" />
+          <Image
+            src={race.image}
+            alt={race.imageAlt}
+            width={600}
+            height={580}
+            priority
+            unoptimized={isUploadUrl(race.image)}
+            className="h-full w-auto"
+          />
         </div>
       </div>
     );
   }
-  if (posters.has(race.image)) {
+  if (race.imageFit === "poster") {
     return (
       <div className="parallax relative mx-auto max-w-[400px] rotate-3 pb-6">
         <span aria-hidden="true" className="hero-plate absolute top-5 -right-4 bottom-0 left-5 rounded-sm bg-orange" />
@@ -179,6 +178,7 @@ function HeroImage({ race }: { race: Race }) {
           width={900}
           height={900}
           priority
+          unoptimized={isUploadUrl(race.image)}
           sizes="(min-width: 768px) 400px, 90vw"
           className="tilt-pop relative block aspect-square w-full rounded-sm object-cover shadow-[0_20px_40px_rgba(0,0,0,0.45)]"
         />
@@ -198,6 +198,7 @@ function HeroImage({ race }: { race: Race }) {
         width={1000}
         height={599}
         priority
+        unoptimized={isUploadUrl(race.image)}
         sizes="(min-width: 768px) 560px, 100vw"
         className="hero-photo relative block h-[230px] w-full object-cover sm:h-[320px] md:h-[380px]"
         style={{ clipPath: "polygon(12% 0, 100% 0, 88% 100%, 0 100%)" }}
@@ -206,29 +207,29 @@ function HeroImage({ race }: { race: Race }) {
   );
 }
 
-function Distances({ race }: { race: Race }) {
+function Distances({ race, t }: { race: Race; t: Texts }) {
   const anyNote = race.distances.some((d) => d.note);
   const anyMissingFee = race.distances.some((d) => !d.fee);
   return (
     <section id="distanser" className={`${wrap} flex scroll-mt-4 flex-col gap-5 pt-6 pb-14`}>
-      <SectionHeading sub={race.feeNote}>Distanser & starttider</SectionHeading>
+      <SectionHeading sub={race.feeNote}>{t("race.distances")}</SectionHeading>
       <div className="card overflow-hidden shadow-[0_12px_28px_-16px_rgba(34,30,31,0.35)]">
         <table className="w-full border-collapse text-left text-[15px] md:text-[16px]">
           <caption className="sr-only">Distanser, starttider och avgifter för {race.name}</caption>
           <thead className="bg-ink text-[12px] tracking-[0.5px] text-mist uppercase md:text-[13px]">
             <tr>
               <th scope="col" className="px-4 py-3 font-bold md:px-5">
-                Distans
+                {t("race.colDistance")}
               </th>
               <th scope="col" className="px-2 py-3 font-bold md:px-5">
-                Start
+                {t("race.colStart")}
               </th>
               <th scope="col" className="px-4 py-3 text-right font-bold md:px-5 md:text-left">
-                Avgift
+                {t("race.colFee")}
               </th>
               {anyNote && (
                 <th scope="col" className="hidden px-5 py-3 font-bold md:table-cell">
-                  Notering
+                  {t("race.colNote")}
                 </th>
               )}
             </tr>
@@ -236,7 +237,7 @@ function Distances({ race }: { race: Race }) {
           <tbody>
             {race.distances.map((d, i) => (
               <tr
-                key={d.name}
+                key={i}
                 data-reveal
                 style={{ "--reveal-i": i } as CSSProperties}
                 className="border-t border-line transition-colors hover:bg-paper"
@@ -251,7 +252,7 @@ function Distances({ race }: { race: Race }) {
                   </time>
                 </td>
                 <td className="px-4 py-3.5 text-right align-top whitespace-nowrap md:px-5 md:text-left">
-                  {d.fee ?? (
+                  {d.fee || (
                     <span className="text-muted">
                       –<span className="sr-only">ingen avgift publicerad</span>
                     </span>
@@ -264,18 +265,18 @@ function Distances({ race }: { race: Race }) {
         </table>
       </div>
       {anyMissingFee && (
-        <p className="m-0 text-[14px] text-muted">– betyder att ingen avgift är publicerad för distansen.</p>
+        <p className="m-0 text-[14px] text-muted">{t("race.noFee")}</p>
       )}
     </section>
   );
 }
 
-function FeeLadder({ ladder }: { ladder: NonNullable<Race["feeLadder"]> }) {
+function FeeLadder({ ladder, t }: { ladder: NonNullable<Race["feeLadder"]>; t: Texts }) {
   const max = Math.max(...ladder.rows.flatMap((r) => r.fees));
   return (
     <section className={`${wrap} flex flex-col gap-5 pb-14`}>
-      <SectionHeading tone="purple" sub="Ju tidigare du anmäler dig, desto lägre avgift.">
-        Avgifter
+      <SectionHeading tone="purple" sub={t("race.feesSub")}>
+        {t("race.fees")}
       </SectionHeading>
       <div className="card overflow-x-auto" data-reveal="up">
         <table className="w-full min-w-[440px] border-collapse text-left text-[15px]">
@@ -283,18 +284,18 @@ function FeeLadder({ ladder }: { ladder: NonNullable<Race["feeLadder"]> }) {
           <thead>
             <tr className="text-[13px] tracking-[0.5px] text-muted uppercase">
               <th scope="col" className="px-4 py-3 font-bold md:px-5">
-                Distans
+                {t("race.colDistance")}
               </th>
-              {ladder.periods.map((p) => (
-                <th key={p} scope="col" className="px-3 py-3 font-bold">
+              {ladder.periods.map((p, i) => (
+                <th key={i} scope="col" className="px-3 py-3 font-bold">
                   {p}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {ladder.rows.map((row) => (
-              <tr key={row.name} className="border-t border-line">
+            {ladder.rows.map((row, r) => (
+              <tr key={r} className="border-t border-line">
                 <th scope="row" className="px-4 py-3 font-bold md:px-5">
                   {row.name}
                 </th>
@@ -320,21 +321,31 @@ function FeeLadder({ ladder }: { ladder: NonNullable<Race["feeLadder"]> }) {
   );
 }
 
-function Registration({ race, upcoming }: { race: Race; upcoming: boolean }) {
+function Registration({
+  race,
+  upcoming,
+  raceEmail,
+  t,
+}: {
+  race: Race;
+  upcoming: boolean;
+  raceEmail: string;
+  t: Texts;
+}) {
   const { registration: reg } = race;
   return (
     <Band tone="orange" id="anmalan" labelledBy="anmalan-rubrik" className="scroll-mt-4">
       <div className="flex flex-wrap items-center gap-x-12 gap-y-8">
         <div className="flex min-w-0 flex-[2_1_420px] flex-col gap-4">
           <BandHeading id="anmalan-rubrik" bar="ink">
-            Anmälan
+            {t("race.signup")}
           </BandHeading>
           <p className="m-0 max-w-[620px] text-[18px] font-semibold" data-reveal style={{ "--reveal-i": 1 } as CSSProperties}>
             {reg.note}
           </p>
-          {race.slug === "jamjohalvan" && upcoming && (
+          {reg.tip && upcoming && (
             <p className="m-0 text-[15px]" data-reveal style={{ "--reveal-i": 2 } as CSSProperties}>
-              Vill du springa Veteran-SM? Kryssa i ”Delta i VSM” när du anmäler dig.
+              {reg.tip}
             </p>
           )}
         </div>
@@ -345,7 +356,9 @@ function Registration({ race, upcoming }: { race: Race; upcoming: boolean }) {
         >
           {reg.url && upcoming ? (
             <>
-              <span className="text-[12px] font-extrabold tracking-[1px] text-orange uppercase">Anmäl dig</span>
+              <span className="text-[12px] font-extrabold tracking-[1px] text-orange uppercase">
+                {t("race.signupLabel")}
+              </span>
               <a href={reg.url} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-lg">
                 {reg.label} <IconExternal size={18} />
                 <span className="sr-only">(öppnas i ny flik)</span>
@@ -354,18 +367,18 @@ function Registration({ race, upcoming }: { race: Race; upcoming: boolean }) {
           ) : (
             <>
               <span className="text-[12px] font-extrabold tracking-[1px] text-orange uppercase">
-                {upcoming ? "Snart" : "Avgjort"}
+                {upcoming ? t("race.soon") : t("race.closedLabel")}
               </span>
               <span className="text-[22px] leading-tight font-extrabold">
-                {upcoming ? reg.label : "Anmälan är stängd"}
+                {upcoming ? reg.label : t("race.closed")}
               </span>
             </>
           )}
           <a
-            href={`mailto:${club.contact.raceEmail}`}
+            href={`mailto:${raceEmail}`}
             className="inline-flex items-center gap-2 text-[15px] font-semibold text-mist no-underline hover:text-orange"
           >
-            <IconMail size={18} /> {club.contact.raceEmail}
+            <IconMail size={18} /> {raceEmail}
           </a>
         </div>
       </div>
@@ -373,14 +386,15 @@ function Registration({ race, upcoming }: { race: Race; upcoming: boolean }) {
   );
 }
 
-function Facts({ race }: { race: Race }) {
+function Facts({ race, t }: { race: Race; t: Texts }) {
+  if (!race.facts.length && !race.records?.length) return null;
   return (
     <section className={`${wrap} flex flex-col gap-6 pt-6 pb-14`}>
-      <SectionHeading tone="ink">Bra att veta</SectionHeading>
+      <SectionHeading tone="ink">{t("race.facts")}</SectionHeading>
       <ul className="m-0 grid list-none grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-4 p-0">
         {race.facts.map((f, i) => (
           <li
-            key={f}
+            key={i}
             data-reveal="up"
             style={{ "--reveal-i": i, rotate: i % 2 ? "0.6deg" : "-0.6deg" } as CSSProperties}
             className="card flex gap-3 p-4 text-[16px]"
@@ -401,11 +415,11 @@ function Facts({ race }: { race: Race }) {
         >
           <h3 className="m-0 flex items-center gap-2.5 text-[19px] font-extrabold">
             <IconTrophy size={22} className="text-orange" />
-            Banrekord
+            {t("race.records")}
           </h3>
           <ul className="m-0 grid list-none grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-4 p-0">
-            {race.records.map((rec) => (
-              <li key={rec.name} className="flex items-baseline gap-4 border-t border-ink-2 pt-3">
+            {race.records.map((rec, i) => (
+              <li key={i} className="flex items-baseline gap-4 border-t border-ink-2 pt-3">
                 <span className="text-[30px] leading-none font-extrabold text-orange tabular-nums">{rec.time}</span>
                 <span className="flex flex-col">
                   <span className="font-bold">{rec.name}</span>
@@ -422,14 +436,15 @@ function Facts({ race }: { race: Race }) {
   );
 }
 
-function MoreRaces({ race, today }: { race: Race; today: string }) {
+function MoreRaces({ race, races, today, t }: { race: Race; races: Race[]; today: string; t: Texts }) {
   const others = races.filter((r) => r.slug !== race.slug);
-  const links = related[race.slug] ?? {};
+  if (!others.length) return null;
+  const links = Object.fromEntries((race.related ?? []).map((l) => [l.slug, l.text]));
   // Related races first.
   others.sort((a, b) => Number(b.slug in links) - Number(a.slug in links));
   return (
     <section className={`${wrap} flex flex-col gap-5 pb-28`}>
-      <SectionHeading tone="purple">Fler lopp</SectionHeading>
+      <SectionHeading tone="purple">{t("race.more")}</SectionHeading>
       <ul className="m-0 grid list-none grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-5 p-0">
         {others.map((r, i) => {
           const why = links[r.slug];
@@ -446,17 +461,19 @@ function MoreRaces({ race, today }: { race: Race; today: string }) {
                     alt=""
                     fill
                     sizes="140px"
+                    unoptimized={isUploadUrl(r.image)}
                     className={`diag-img ${r.imageFit === "contain" ? "object-contain p-2" : "object-cover"}`}
                   />
                 </span>
                 <span className="flex min-w-0 flex-col gap-1 px-4 py-3.5">
                   <span className={`text-[12px] font-bold tracking-[0.5px] uppercase ${r.tone === "purple" ? "text-purple" : "text-orange-dark"}`}>
-                    {why ? "Hänger ihop" : soon ?? r.dateLabel}
+                    {why ? t("race.related") : (soon ?? r.dateLabel)}
                   </span>
                   <span className="text-[18px] leading-tight font-extrabold">{r.name}</span>
                   <span className="text-[14px] text-muted">{why ?? `${r.dateLabel} · ${r.place}`}</span>
                   <span className="mt-auto pt-1 text-[14px] font-semibold text-orange-dark">
-                    Till loppet <span className="inline-block transition-transform duration-300 group-hover:translate-x-1">→</span>
+                    {t("race.toRace")}{" "}
+                    <span className="inline-block transition-transform duration-300 group-hover:translate-x-1">→</span>
                   </span>
                 </span>
               </Link>
@@ -465,7 +482,7 @@ function MoreRaces({ race, today }: { race: Race; today: string }) {
         })}
       </ul>
       <Link href="/tavla" className="arrow-link inline-flex items-center gap-1.5 self-start">
-        <IconArrowLeft size={18} /> Alla lopp
+        <IconArrowLeft size={18} /> {t("race.back")}
       </Link>
     </section>
   );

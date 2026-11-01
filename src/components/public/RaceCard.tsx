@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Race } from "@/lib/data/races";
 import { daysBetween } from "@/lib/format";
+import { isUploadUrl } from "@/lib/uploads";
 
 /** Days until the race, as a short label ("I dag", "Om 7 dagar"), or null once it's run. */
 export function raceCountdownLabel(race: Race, today: string) {
@@ -37,7 +38,14 @@ export function RaceCard({
     >
       {race.imageFit === "contain" ? (
         <div className="flex h-[220px] items-center justify-center border-b border-line bg-white">
-          <Image src={race.image} alt={race.imageAlt} width={600} height={580} className="h-[190px] w-auto" />
+          <Image
+            src={race.image}
+            alt={race.imageAlt}
+            width={600}
+            height={580}
+            unoptimized={isUploadUrl(race.image)}
+            className="h-[190px] w-auto"
+          />
         </div>
       ) : (
         <div className="relative h-[220px] overflow-hidden">
@@ -46,9 +54,11 @@ export function RaceCard({
             alt={race.imageAlt}
             fill
             sizes="(min-width: 768px) 380px, 100vw"
+            unoptimized={isUploadUrl(race.image)}
             className="object-cover transition-[scale] duration-700 ease-[var(--ease-sprint)] group-hover:scale-105"
             style={{
-              objectPosition: race.slug === "jamjohalvan" ? "50% 20%" : undefined,
+              // Posters carry their title at the top; keep it in the crop.
+              objectPosition: race.imageFit === "poster" ? "50% 20%" : undefined,
               clipPath:
                 index % 2 ? "polygon(0 0, 100% 0, 100% 100%, 0 82%)" : "polygon(0 0, 100% 0, 100% 82%, 0 100%)",
             }}

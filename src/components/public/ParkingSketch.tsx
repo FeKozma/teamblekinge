@@ -6,7 +6,18 @@
 const GREEN = "#2F6B3B";
 const RED = "#B3261E";
 
-export function ParkingSketch({ className = "" }: { className?: string }) {
+export function ParkingSketch({
+  street,
+  place,
+  className = "",
+}: {
+  /** The club house's street address, "Tennvägen 11 A"; the road is named without the number. */
+  street: string;
+  /** What the house is called, "Klubblokalen". */
+  place: string;
+  className?: string;
+}) {
+  const road = street.replace(/\s+\d.*$/, "");
   return (
     <svg
       viewBox="0 0 480 320"
@@ -31,7 +42,7 @@ export function ParkingSketch({ className = "" }: { className?: string }) {
       <rect y="256" width="480" height="64" fill="#3A3435" />
       <path d="M150 292H480" stroke="#fff" strokeWidth="3" strokeDasharray="16 12" opacity="0.6" />
       <text x="16" y="297" fill="#fff" fontSize="16" fontWeight="800">
-        Tennvägen
+        {road}
       </text>
 
       {/* Lot and driveway */}
@@ -41,10 +52,10 @@ export function ParkingSketch({ className = "" }: { className?: string }) {
       {/* Club house */}
       <rect x="272" y="20" width="188" height="92" rx="6" fill="#221E1F" />
       <text x="366" y="60" textAnchor="middle" fill="#fff" fontSize="17" fontWeight="800">
-        Klubblokalen
+        {place}
       </text>
       <text x="366" y="82" textAnchor="middle" fill="#EE8915" fontSize="13" fontWeight="800">
-        Tennvägen 11 A
+        {street}
       </text>
       <rect x="300" y="108" width="30" height="8" rx="2" fill="#EE8915" />
 

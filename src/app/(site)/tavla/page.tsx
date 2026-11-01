@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Countdown } from "@/components/Countdown";
@@ -8,26 +8,34 @@ import { IconBus, IconTicket } from "@/components/public/icons";
 import { RaceCard } from "@/components/public/RaceCard";
 import { ArrowLink, DateBadge, Page, PageHero, Pill, SectionHeading } from "@/components/ui";
 import { getEvents } from "@/lib/content/events";
-import { races, type Race } from "@/lib/data/races";
+import { getPageTexts } from "@/lib/content/pages";
+import { getRaces } from "@/lib/content/races";
+import { paragraphs } from "@/lib/data/pages";
+import { nextRace, type Race } from "@/lib/data/races";
 import { dayMonth, longDate, todayISO } from "@/lib/format";
 
-export const metadata: Metadata = {
-  title: "Tävla",
-  description:
-    "Team Blekinges egna lopp – Jämjöhalvan, Kustmaran & Kristianopel Runt och Veteran-SM – plus åka och tävla tillsammans och resultat.",
-};
+type Texts = (key: string) => string;
 
-export default function CompetePage() {
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getPageTexts("tavla");
+  return { title: "Tävla", description: paragraphs(t("hero.intro")).join(" ") };
+}
+
+export default async function CompetePage() {
   const today = todayISO();
-  const next = races
-    .filter((r) => r.start.slice(0, 10) >= today)
-    .sort((a, b) => a.start.localeCompare(b.start))[0];
+  const [races, t] = await Promise.all([getRaces(), getPageTexts("tavla")]);
+  const next = nextRace(races, today);
+  const intro = paragraphs(t("hero.intro"));
   return (
     <Page>
       <PageHero
-        kicker="Egna lopp · åka och tävla · resultat"
-        title="Tävla"
-        intro="Vi arrangerar Jämjöhalvan i november och Kustmaran & Kristianopel Runt i juli – i år avgörs också Veteran-SM i halvmaraton i Jämjö. Och vi åker gärna och tävlar tillsammans."
+        kicker={t("hero.kicker")}
+        title={t("hero.title")}
+        intro={intro.length > 1 ? intro.map((p, i) => (
+          <span key={i} className="block [&+&]:mt-3">
+            {p}
+          </span>
+        )) : intro[0]}
       >
         {next && (
           <Link
@@ -36,27 +44,27 @@ export default function CompetePage() {
             style={{ "--i": 3 } as CSSProperties}
           >
             <span className="text-[12px] font-extrabold tracking-[1px] text-orange uppercase">
-              {next.name} · start om
+              {next.name} · {t("hero.countdown")}
             </span>
             <Countdown to={next.start} />
           </Link>
         )}
         <JumpNav
           links={[
-            { href: "#lopp", label: "Våra lopp" },
-            { href: "#aka-och-tavla", label: "Åka och tävla" },
-            { href: "#resultat", label: "Resultat" },
+            { href: "#lopp", label: t("jump.races") },
+            { href: "#aka-och-tavla", label: t("jump.travel") },
+            { href: "#resultat", label: t("jump.results") },
           ]}
         />
       </PageHero>
-      <OurRaces today={today} />
-      <TravelTogether today={today} />
-      <Results today={today} />
+      <OurRaces races={races} today={today} t={t} />
+      <TravelTogether today={today} t={t} />
+      <Results races={races} today={today} t={t} />
     </Page>
   );
 }
 
-function OurRaces({ today }: { today: string }) {
+function OurRaces({ races, today, t }: { races: Race[]; today: string; t: Texts }) {
   const poses = [
     { rotate: "-1.5deg", y: "md:translate-y-0" },
     { rotate: "1.5deg", y: "md:translate-y-12" },
@@ -65,7 +73,7 @@ function OurRaces({ today }: { today: string }) {
   return (
     <section id="lopp" className={`${wrap} flex scroll-mt-4 flex-col gap-8 pt-6 pb-20 md:pb-28`}>
       <SectionHeading size="lg" className="[&_h2]:origin-left [&_h2]:-rotate-2">
-        Våra lopp
+        {t("races.heading")}
       </SectionHeading>
       <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] items-stretch gap-7">
         {races.map((r, i) => (
@@ -78,32 +86,24 @@ function OurRaces({ today }: { today: string }) {
   );
 }
 
-async function TravelTogether({ today }: { today: string }) {
+async function TravelTogether({ today, t }: { today: string; t: Texts }) {
   const meeting = (await getEvents()).find((e) => e.id === "aka-och-tavla" && e.date >= today);
   const perks: { Icon: typeof IconBus; title: string; text: string }[] = [
-    {
-      Icon: IconTicket,
-      title: "Subventionerade startavgifter",
-      text: "Föreningen betalar en del av startavgiften till vissa tävlingar.",
-    },
-    {
-      Icon: IconBus,
-      title: "Bussresor till självkostnadspris",
-      text: "Till en del tävlingar ordnar vi bussresa – du betalar bara vad det kostar.",
-    },
+    { Icon: IconTicket, title: t("travel.perk1Title"), text: t("travel.perk1Text") },
+    { Icon: IconBus, title: t("travel.perk2Title"), text: t("travel.perk2Text") },
   ];
   return (
     <Band id="aka-och-tavla" labelledBy="aka-rubrik" className="scroll-mt-4">
       <div className="flex flex-col gap-10">
-        <BandHeading id="aka-rubrik" sub="Det är roligare att tävla tillsammans. Som medlem får du hjälp på vägen till andras lopp.">
-          Åka och tävla
+        <BandHeading id="aka-rubrik" sub={t("travel.sub")}>
+          {t("travel.heading")}
         </BandHeading>
 
         <div className="flex flex-wrap items-start gap-6">
           <div className="grid min-w-0 flex-[2_1_480px] grid-cols-[repeat(auto-fit,minmax(230px,1fr))] gap-5">
             {perks.map(({ Icon, title, text }, i) => (
               <article
-                key={title}
+                key={i}
                 data-settle
                 style={{ "--rest-rotate": i ? "1.2deg" : "-1.2deg", "--reveal-i": i } as CSSProperties}
                 className="straighten-hover flex flex-col gap-2 rounded-md bg-white p-5 text-ink shadow-[0_14px_30px_rgba(0,0,0,0.35)]"
@@ -120,7 +120,9 @@ async function TravelTogether({ today }: { today: string }) {
           <div className="min-w-0 flex-[1_1_300px]" data-reveal="right">
             {meeting ? (
               <article className="relative flex flex-col gap-3 rounded-md border-2 border-dashed border-orange/70 bg-ink-3 p-5 [rotate:1.5deg]">
-                <span className="text-[12px] font-extrabold tracking-[1px] text-orange uppercase">Planeringsträff</span>
+                <span className="text-[12px] font-extrabold tracking-[1px] text-orange uppercase">
+                  {t("travel.meeting")}
+                </span>
                 <div className="flex items-center gap-3">
                   <span className="live-dot rounded-lg">
                     <DateBadge date={meeting.date} today={today} highlight />
@@ -134,11 +136,11 @@ async function TravelTogether({ today }: { today: string }) {
                 </div>
                 {meeting.note && <p className="m-0 text-[15px] text-mist">{meeting.note}</p>}
                 <Link href="/kalender" className="arrow-link self-start text-orange hover:text-orange">
-                  Se i kalendern <span className="arrow">→</span>
+                  {t("travel.calendar")} <span className="arrow">→</span>
                 </Link>
               </article>
             ) : (
-              <p className="m-0 rounded-md bg-ink-3 p-5 text-mist">[Nästa planeringsträff publiceras i kalendern]</p>
+              <p className="m-0 rounded-md bg-ink-3 p-5 text-mist">{t("travel.noMeeting")}</p>
             )}
           </div>
         </div>
@@ -160,60 +162,38 @@ async function TravelTogether({ today }: { today: string }) {
   );
 }
 
-function Results({ today }: { today: string }) {
-  const bySlug = Object.fromEntries(races.map((r) => [r.slug, r])) as Record<string, Race>;
-  const upcomingLine = (r: Race) =>
-    r.start.slice(0, 10) >= today
-      ? `Avgörs ${dayMonth(r.start.slice(0, 10))} – resultatet publiceras här efter loppet.`
-      : `[Resultat ${r.start.slice(0, 4)} publiceras här]`;
-
-  const archive: { race: Race; years: { label: string; text: ReactNode; upcoming?: boolean }[] }[] = [
-    {
-      race: bySlug.jamjohalvan,
-      years: [
-        {
-          label: "2026",
-          upcoming: bySlug.jamjohalvan.start.slice(0, 10) >= today,
-          text: (
-            <>
-              {upcomingLine(bySlug.jamjohalvan)} Chiptidtagning av Racetimer. [Länk till Racetimers resultatlista]
-            </>
-          ),
-        },
-        { label: "Tidigare år", text: "[Resultatarkivet från gamla sidan flyttas hit]" },
-      ],
-    },
-    {
-      race: bySlug.kustmaran,
-      years: [
-        { label: "2027", upcoming: true, text: upcomingLine(bySlug.kustmaran) },
-        { label: "Tidigare år", text: "[Resultatarkivet från gamla sidan flyttas hit]" },
-      ],
-    },
-    {
-      race: bySlug["veteran-sm"],
-      years: [
-        {
-          label: "2026 · halvmaraton",
-          upcoming: bySlug["veteran-sm"].start.slice(0, 10) >= today,
-          text: `${upcomingLine(bySlug["veteran-sm"])} Medaljer till de tre främsta i varje klass.`,
-        },
-        { label: "2027 · maraton", text: "Planeras på Kustmaran 2027." },
-      ],
-    },
-  ];
+function Results({ races, today, t }: { races: Race[]; today: string; t: Texts }) {
+  const archive = races
+    .filter((r) => r.results?.length)
+    .map((race) => {
+      const date = race.start.slice(0, 10);
+      const upcoming = date >= today;
+      return {
+        race,
+        years: (race.results ?? []).map((y) => {
+          if (!y.current) return { label: y.label, text: y.text };
+          // This year's race: until race day, say when it's run.
+          const lead = upcoming
+            ? `${t("results.upcomingBefore")} ${dayMonth(date)} ${t("results.upcomingAfter")}`.trim()
+            : y.text
+              ? ""
+              : t("results.pending");
+          return { label: y.label, upcoming, text: [lead, y.text].filter(Boolean).join(" ") };
+        }),
+      };
+    });
 
   const clubLists = [
-    { Icon: IconTrophy, title: "Tävlingsresultat 2026", text: "[Medlemmarnas resultat från årets tävlingar]" },
-    { Icon: IconList, title: "All Time High", text: "[Klubbens bästa tider genom åren, per distans]" },
-    { Icon: IconStar, title: "Årens utmärkelser", text: "[Utmärkelser per år]" },
+    { Icon: IconTrophy, title: t("results.list1Title"), text: t("results.list1Text") },
+    { Icon: IconList, title: t("results.list2Title"), text: t("results.list2Text") },
+    { Icon: IconStar, title: t("results.list3Title"), text: t("results.list3Text") },
   ];
   const records = races.flatMap((r) => (r.records ?? []).map((rec) => ({ ...rec, race: r.name })));
 
   return (
     <section id="resultat" className={`${wrap} flex scroll-mt-4 flex-col gap-8 pt-10 pb-28`}>
-      <SectionHeading tone="purple" sub="Resultat från våra egna lopp, år för år – och klubbens egna listor.">
-        Resultat
+      <SectionHeading tone="purple" sub={t("results.sub")}>
+        {t("results.heading")}
       </SectionHeading>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(270px,1fr))] items-start gap-5">
@@ -233,11 +213,11 @@ function Results({ today }: { today: string }) {
               <span aria-hidden="true" className={`skew-bar ${race.tone === "purple" ? "bg-purple" : "bg-orange"}`} />
             </header>
             <ol className="m-0 flex list-none flex-col p-0">
-              {years.map((y) => (
-                <li key={y.label} className="flex flex-col gap-1 border-t border-line px-5 py-3.5 first:border-t-0">
+              {years.map((y, j) => (
+                <li key={j} className="flex flex-col gap-1 border-t border-line px-5 py-3.5 first:border-t-0">
                   <span className="flex items-center gap-2">
                     <span className="text-[15px] font-extrabold">{y.label}</span>
-                    {y.upcoming && <Pill tone="orange">Kommer</Pill>}
+                    {y.upcoming && <Pill tone="orange">{t("results.upcoming")}</Pill>}
                   </span>
                   <span className="text-[14px] text-muted">{y.text}</span>
                 </li>
@@ -258,22 +238,22 @@ function Results({ today }: { today: string }) {
           </svg>
           <h3 className="relative m-0 flex items-center gap-3 text-[20px] font-extrabold">
             <IconTrophy size={22} className="text-orange" />
-            Banrekord
+            {t("results.records")}
           </h3>
           <table className="relative mt-4 w-full border-collapse text-left">
             <caption className="sr-only">Banrekord på våra lopp</caption>
             <thead>
               <tr className="text-[12px] tracking-[0.5px] text-mist uppercase">
-                <th scope="col" className="pb-2 font-bold">Tid</th>
-                <th scope="col" className="pb-2 font-bold">Namn</th>
-                <th scope="col" className="hidden pb-2 font-bold sm:table-cell">Lopp</th>
-                <th scope="col" className="pb-2 text-right font-bold">År</th>
+                <th scope="col" className="pb-2 font-bold">{t("results.colTime")}</th>
+                <th scope="col" className="pb-2 font-bold">{t("results.colName")}</th>
+                <th scope="col" className="hidden pb-2 font-bold sm:table-cell">{t("results.colRace")}</th>
+                <th scope="col" className="pb-2 text-right font-bold">{t("results.colYear")}</th>
               </tr>
             </thead>
             <tbody>
               {records.map((rec, i) => (
                 <tr
-                  key={rec.name}
+                  key={i}
                   data-reveal
                   style={{ "--reveal-i": i + 1 } as CSSProperties}
                   className="border-t border-ink-2"
@@ -303,11 +283,11 @@ function Results({ today }: { today: string }) {
       )}
 
       <div className="flex flex-col gap-3">
-        <h3 className="m-0 text-[19px] font-extrabold">Klubbens listor</h3>
+        <h3 className="m-0 text-[19px] font-extrabold">{t("results.lists")}</h3>
         <ul className="m-0 grid list-none grid-cols-[repeat(auto-fit,minmax(230px,1fr))] gap-4 p-0">
           {clubLists.map(({ Icon, title, text }, i) => (
             <li
-              key={title}
+              key={i}
               data-reveal="up"
               style={{ "--reveal-i": i } as CSSProperties}
               className="lean-hover card flex items-start gap-3 p-4"
@@ -323,7 +303,7 @@ function Results({ today }: { today: string }) {
       </div>
 
       <ArrowLink href="/kalender" className="self-start">
-        Se kommande lopp och resor i kalendern
+        {t("results.calendar")}
       </ArrowLink>
     </section>
   );

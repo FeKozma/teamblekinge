@@ -7,10 +7,13 @@ import { CommentCount } from "@/components/news/LiveCounts";
 import { PdfIcon } from "@/components/news/PdfIcon";
 import { dayMonthLong, newsDate, pinnedNews } from "@/components/news/util";
 import { ArrowLink, DateBadge, Pill, SectionHeading, SpeedLines } from "@/components/ui";
+import { around } from "@/components/public/text";
+import { getClub } from "@/lib/content/club";
 import { upcomingEvents } from "@/lib/content/events";
 import { listNews } from "@/lib/content/news";
+import { getPageTexts } from "@/lib/content/pages";
 import { getTermPlan, getTrainingGroups } from "@/lib/content/training";
-import type { TermPlan, TrainingGroup } from "@/lib/data/club";
+import type { TermPlan, TrainingGroup } from "@/lib/data/training";
 import type { ClubEvent } from "@/lib/data/events";
 import { feed, feedKindLabel } from "@/lib/data/feed";
 import { commentCount, type NewsItem } from "@/lib/data/news";
@@ -327,7 +330,7 @@ function Upcoming({ today, events }: { today: string; events: ClubEvent[] }) {
   );
 }
 
-function WeekTraining({
+async function WeekTraining({
   today,
   termPlan,
   trainingGroups,
@@ -336,6 +339,7 @@ function WeekTraining({
   termPlan: TermPlan;
   trainingGroups: TrainingGroup[];
 }) {
+  const [club, t] = await Promise.all([getClub(), getPageTexts("startsida")]);
   const date = nextTuesday(today);
   const plan = termPlan[date];
   const when = relativeDay(date, today) === "I dag" ? "I kväll" : longDate(date);
@@ -358,7 +362,7 @@ function WeekTraining({
         ))}
       </ul>
       <p className="m-0 text-[13px] text-muted">
-        Samling 18:00 vid klubblokalen, Tennvägen 11 A – Hälsagruppen 17:45.
+        {around(t("member.meetBefore"), club.address.street, t("member.meetAfter"))}
       </p>
       <ArrowLink href="/trana-med-oss#terminsplan" className="text-[14px]">
         Hela terminsplanen

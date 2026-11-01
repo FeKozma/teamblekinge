@@ -1,10 +1,15 @@
-// The club's own races. Facts from the current teamblekinge.nu.
+// The club's own races. Facts from the current teamblekinge.nu. This is the
+// SEED: the board edits races in /admin/lopp; pages read them via lib/content.
+
+import { longDate } from "@/lib/format";
 
 export type Race = {
+  /** Part of the race's URL (/tavla/<slug>). Never changes once published. */
   slug: string;
   name: string;
   /** ISO date-time of the first start, Europe/Stockholm. */
   start: string;
+  /** "Lördag 7 november 2026" — follows `start` (see raceDateLabel). */
   dateLabel: string;
   place: string;
   kicker: string;
@@ -13,10 +18,14 @@ export type Race = {
   summary: string;
   image: string;
   imageAlt: string;
-  /** Logos/posters are shown contained on white instead of cropped. */
-  imageFit?: "cover" | "contain";
+  /**
+   * How the image is framed: a photo cropped to fit, a square poster shown
+   * whole on the race's page, or a logo shown contained on white.
+   */
+  imageFit?: "cover" | "poster" | "contain";
   distances: { name: string; start: string; note?: string; fee?: string }[];
-  registration: { label: string; url?: string; note: string };
+  /** `tip` is shown under the note only until race day. */
+  registration: { label: string; url?: string; note: string; tip?: string };
   facts: string[];
   cta: string;
   /** Which registration period the fees in `distances` apply to. */
@@ -25,6 +34,13 @@ export type Race = {
   feeLadder?: { periods: string[]; rows: { name: string; fees: number[] }[] };
   /** Course records, as published on the old site. */
   records?: { distance: string; name: string; club: string; time: string; year: number }[];
+  /** Other races this one hangs together with, and how — shown first under "Fler lopp". */
+  related?: { slug: string; text: string }[];
+  /**
+   * The race's box under Tävla › Resultat, one row per year. The `current`
+   * row is this year's race: until race day it says when it is run.
+   */
+  results?: { label: string; text: string; current?: boolean }[];
 };
 
 export const races: Race[] = [
@@ -40,6 +56,7 @@ export const races: Race[] = [
       "Breddlopp på en lättlöpt varvbana: 21,1 km, 10 km, 5 km och barnlopp, plus Jämjöhallenstafetten. Seedningslopp till bland annat Göteborgsvarvet.",
     image: "/img/jamjohalvan-affisch.jpg",
     imageAlt: "Affisch för Jämjöhalvan 7 november: 21,1 km, 10 km, 5 km och barnlopp",
+    imageFit: "poster",
     distances: [
       { name: "21,1 km (4 varv)", start: "11:00", fee: "500 kr" },
       { name: "Jämjöhallenstafetten, 4 × ca 5,3 km", start: "11:00", fee: "800 kr/lag" },
@@ -51,6 +68,7 @@ export const races: Race[] = [
       label: "Anmäl dig på mittlopp.se",
       url: "https://mittlopp.se/Anmalan/Arrangemangsgrupp/RBTNJZXCBKKIEQVZPF",
       note: "Föranmälan stänger 31 oktober kl. 23:59. Efteranmälan på tävlingsdagen 08.30–10.15 i mån av plats.",
+      tip: "Vill du springa Veteran-SM? Kryssa i ”Delta i VSM” när du anmäler dig.",
     },
     facts: [
       "Chiptidtagning av Racetimer",
@@ -59,6 +77,16 @@ export const races: Race[] = [
     ],
     cta: "Till loppet",
     feeNote: "Avgift vid föranmälan 2/10–31/10.",
+    related: [
+      {
+        slug: "veteran-sm",
+        text: "Veteran-SM i halvmaraton avgörs i Jämjöhalvan – kryssa i ”Delta i VSM” när du anmäler dig.",
+      },
+    ],
+    results: [
+      { label: "2026", current: true, text: "Chiptidtagning av Racetimer. [Länk till Racetimers resultatlista]" },
+      { label: "Tidigare år", text: "[Resultatarkivet från gamla sidan flyttas hit]" },
+    ],
   },
   {
     slug: "kustmaran",
@@ -104,6 +132,11 @@ export const races: Race[] = [
       { distance: "42,2 km", name: "Juris Treimanis", club: "Högby IF", time: "2:35:37", year: 1996 },
       { distance: "42,2 km", name: "Petra Skiöld", club: "Ryssbergets IK", time: "2:55:42", year: 2013 },
     ],
+    related: [{ slug: "veteran-sm", text: "Veteran-SM i maraton planeras här 2027." }],
+    results: [
+      { label: "2027", current: true, text: "" },
+      { label: "Tidigare år", text: "[Resultatarkivet från gamla sidan flyttas hit]" },
+    ],
   },
   {
     slug: "veteran-sm",
@@ -130,9 +163,38 @@ export const races: Race[] = [
       "Medaljer till de tre främsta i varje klass",
     ],
     cta: "Läs mer",
+    related: [
+      {
+        slug: "jamjohalvan",
+        text: "VSM springs i Jämjöhalvans halvmaraton – samma arena, start kl. 11:00. Anmälan görs via Jämjöhalvan.",
+      },
+      { slug: "kustmaran", text: "Veteran-SM i maraton planeras på Kustmaran 2027." },
+    ],
+    results: [
+      { label: "2026 · halvmaraton", current: true, text: "Medaljer till de tre främsta i varje klass." },
+      { label: "2027 · maraton", text: "Planeras på Kustmaran 2027." },
+    ],
   },
 ];
 
-export function getRace(slug: string) {
-  return races.find((r) => r.slug === slug);
+const TZ = "Europe/Stockholm";
+
+/** "2026-11-07", "11:00" → "2026-11-07T11:00:00+01:00" (Stockholm's offset on that day). */
+export function stockholmDateTime(date: string, time: string) {
+  const zone = new Intl.DateTimeFormat("en-US", { timeZone: TZ, timeZoneName: "longOffset" })
+    .formatToParts(new Date(`${date}T${time}:00Z`))
+    .find((p) => p.type === "timeZoneName")?.value;
+  const offset = zone?.match(/[+-]\d{2}:\d{2}/)?.[0] ?? "+01:00";
+  return `${date}T${time}:00${offset}`;
+}
+
+/** "2026-11-07" → "Lördag 7 november 2026" */
+export function raceDateLabel(date: string) {
+  const label = `${longDate(date)} ${date.slice(0, 4)}`;
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+/** The next race not yet run (first start today or later); ties keep the list's order. */
+export function nextRace(races: Race[], today: string) {
+  return races.filter((r) => r.start.slice(0, 10) >= today).sort((a, b) => a.start.localeCompare(b.start))[0];
 }
