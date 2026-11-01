@@ -67,7 +67,15 @@ export function AdminForm({
     e.preventDefault();
     const data = new FormData(e.currentTarget);
     startTransition(async () => {
-      const next = await action(data);
+      let next: FormState;
+      try {
+        next = await action(data);
+      } catch (e) {
+        // A redirect after saving (e.g. to the new item) arrives as a rejection;
+        // the save went through, so don't warn about unsaved changes on the way out.
+        setDirty(false);
+        throw e;
+      }
       setState(next);
       if (next?.ok) {
         setDirty(false);

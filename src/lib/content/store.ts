@@ -201,7 +201,8 @@ export async function saveUpload(
   }
   const id = `${randomBytes(6).toString("hex")}.${sig.ext}`;
   await mkdir(sb.files, { recursive: true });
-  await writeFile(path.join(sb.files, id), buf);
+  // turbopackIgnore: a runtime path — don't trace the whole project into the build.
+  await writeFile(path.join(/*turbopackIgnore: true*/ sb.files, id), buf);
   return { id, name: file.name || id, bytes: buf.length, type: sig.type };
 }
 
