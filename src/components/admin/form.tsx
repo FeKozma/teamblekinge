@@ -363,6 +363,18 @@ export function ImageField({
   const id = useId();
   const shown = picked ?? (removed ? undefined : current);
 
+  // After a save the page brings the stored URL: drop the chosen file so the
+  // next save doesn't upload it again.
+  const [savedUrl, setSavedUrl] = useState(current);
+  if (current !== savedUrl) {
+    setSavedUrl(current);
+    setPicked(null);
+    setRemoved(false);
+  }
+  useEffect(() => {
+    if (input.current) input.current.value = "";
+  }, [current]);
+
   useEffect(() => () => {
     if (picked) URL.revokeObjectURL(picked);
   }, [picked]);
@@ -439,8 +451,8 @@ export type ListField = {
 
 type Row = Record<string, unknown> & { __key: string };
 
-// Initial rows get index keys (the same on server and client, so hydration
-// matches); rows added later get a running number.
+// Rows from the server get index keys per generation (the same on server and
+// client, so hydration matches); rows added later get a running number.
 let keySeq = 0;
 const withKey = (item: Record<string, unknown>, key = `n${++keySeq}`): Row => ({ ...item, __key: key });
 const spanClass = { 1: "md:col-span-1", 2: "md:col-span-2", 3: "md:col-span-3", 4: "md:col-span-4", 6: "md:col-span-6" };
@@ -475,9 +487,19 @@ export function ListEditor<T extends object>({
   /** Show the position, for lists where order is shown on the site. */
   numbered?: boolean;
 }) {
-  const [rows, setRows] = useState<Row[]>(() =>
-    initial.map((item, i) => withKey(item as Record<string, unknown>, `i${i}`)),
-  );
+  const fromServer = (items: T[], gen: number) =>
+    items.map((item, i) => withKey(item as Record<string, unknown>, `g${gen}-${i}`));
+  const [rows, setRows] = useState<Row[]>(() => fromServer(initial, 0));
+
+  // After a save the page brings the stored list: start over from it, with
+  // fresh keys so chosen files and previews in the rows are cleared too.
+  const savedSig = JSON.stringify(initial);
+  const [synced, setSynced] = useState({ sig: savedSig, gen: 0 });
+  if (savedSig !== synced.sig) {
+    const gen = synced.gen + 1;
+    setSynced({ sig: savedSig, gen });
+    setRows(fromServer(initial, gen));
+  }
   const errors = useContext(ErrorsContext);
   const hidden = useRef<HTMLInputElement>(null);
   const lastAdded = useRef<string | null>(null);
