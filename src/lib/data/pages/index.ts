@@ -1,6 +1,9 @@
 import { bliMedlemTexts } from "./bli-medlem";
+import { dokumentTexts } from "./dokument";
 import { foreningenTexts } from "./foreningen";
 import { fragorTexts } from "./fragor";
+import { kalenderTexts } from "./kalender";
+import { nyheterTexts } from "./nyheter";
 import { sidfotTexts } from "./sidfot";
 import { startsidaTexts } from "./startsida";
 import { tavlaTexts } from "./tavla";
@@ -17,6 +20,9 @@ export const pageTextDefs: PageTextsDef[] = [
   tavlaTexts,
   foreningenTexts,
   bliMedlemTexts,
+  nyheterTexts,
+  kalenderTexts,
+  dokumentTexts,
   fragorTexts,
   sidfotTexts,
 ];

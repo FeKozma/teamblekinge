@@ -1,5 +1,6 @@
 import "server-only";
 import { revalidatePath } from "next/cache";
+import { saveUpload, UploadError, uploadUrl } from "@/lib/content/store";
 import { getSession } from "@/lib/session";
 import type { FormState } from "./form-state";
 
@@ -75,4 +76,44 @@ export function slugify(s: string) {
       .replace(/^-+|-+$/g, "")
       .slice(0, 80) || "sida"
   );
+}
+
+/**
+ * The image from an <ImageField name=…>: a newly chosen file is stored and its
+ * URL returned; otherwise the current URL ("" when removed).
+ */
+export async function imageFrom(data: FormData, name: string): Promise<{ url: string } | { error: string }> {
+  const file = data.get(`${name}__file`);
+  if (file instanceof File && file.size > 0) {
+    try {
+      return { url: uploadUrl((await saveUpload(file, { kinds: ["image"] })).id) };
+    } catch (e) {
+      if (e instanceof UploadError) return { error: e.message };
+      throw e;
+    }
+  }
+  return { url: text(data, name) };
+}
+
+/**
+ * Store images chosen in a <ListEditor> "image" field and put their URLs in
+ * the rows. Returns errors keyed like other list errors.
+ */
+export async function resolveListImages<T extends object>(data: FormData, list: string, rows: T[], field: keyof T & string) {
+  const errors: Record<string, string> = {};
+  for (const [i, row] of rows.entries()) {
+    const r = row as Record<string, unknown>;
+    const inputName = r[`${field}__upload`];
+    delete r[`${field}__upload`];
+    if (typeof inputName !== "string") continue;
+    const file = data.get(inputName);
+    if (!(file instanceof File) || !file.size) continue;
+    try {
+      r[field] = uploadUrl((await saveUpload(file, { kinds: ["image"] })).id);
+    } catch (e) {
+      if (e instanceof UploadError) errors[`${list}.${i}.${field}`] = e.message;
+      else throw e;
+    }
+  }
+  return errors;
 }

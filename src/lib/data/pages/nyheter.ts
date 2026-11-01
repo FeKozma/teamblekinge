@@ -1,0 +1,9 @@
+import type { PageTextsDef } from "./types";
+
+// TODO: move this page's hard-coded texts here (see fragor.ts for the pattern).
+export const nyheterTexts: PageTextsDef = {
+  id: "nyheter",
+  label: "Nyheter",
+  href: "/nyheter",
+  sections: [],
+};

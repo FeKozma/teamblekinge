@@ -11,7 +11,7 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
-import { IconArrowDown, IconArrowUp, IconPlus, IconTrash } from "@/components/icons";
+import { IconArrowDown, IconArrowUp, IconImage, IconPlus, IconTrash } from "@/components/icons";
 import { toast } from "@/components/documents/Toaster";
 import type { FormState } from "./form-state";
 
@@ -312,13 +312,116 @@ export function CheckboxField({
   );
 }
 
+/** Preview of an image URL or a chosen file. */
+function ImagePreview({ src, contain = false }: { src?: string; contain?: boolean }) {
+  return src ? (
+    // eslint-disable-next-line @next/next/no-img-element -- previews of uploads and blob: URLs
+    <img
+      src={src}
+      alt=""
+      className={`h-24 w-36 flex-none rounded-lg border border-line bg-white ${contain ? "object-contain p-1.5" : "object-cover"}`}
+    />
+  ) : (
+    <span className="flex h-24 w-36 flex-none items-center justify-center rounded-lg border border-dashed border-[#cfc8c4] bg-white text-muted">
+      <IconImage size={26} />
+    </span>
+  );
+}
+
+/**
+ * Pick an image from the computer or phone. The current image is kept unless
+ * a new one is chosen or it is removed. Read it in the action with
+ * imageFrom(data, name) from ./server.
+ */
+export function ImageField({
+  label,
+  name,
+  current,
+  hint,
+  contain = false,
+}: {
+  label: ReactNode;
+  name: string;
+  /** URL of the image used today, if any. */
+  current?: string;
+  hint?: ReactNode;
+  /** Logos: show the whole image instead of cropping. */
+  contain?: boolean;
+}) {
+  const input = useRef<HTMLInputElement>(null);
+  const [picked, setPicked] = useState<string | null>(null);
+  const [removed, setRemoved] = useState(false);
+  const error = useFieldError(name);
+  const id = useId();
+  const shown = picked ?? (removed ? undefined : current);
+
+  useEffect(() => () => {
+    if (picked) URL.revokeObjectURL(picked);
+  }, [picked]);
+
+  return (
+    <div data-field={name} className="flex flex-col gap-1.5">
+      <span id={`${id}-l`} className="text-[14px] font-semibold">
+        {label}
+      </span>
+      <div className="flex flex-wrap items-center gap-3">
+        <ImagePreview src={shown} contain={contain} />
+        <div className="flex flex-col items-start gap-1.5">
+          <button
+            type="button"
+            onClick={() => input.current?.click()}
+            aria-describedby={`${id}-l`}
+            className="btn btn-outline min-h-10 bg-white px-3 text-[14px]"
+          >
+            {shown ? "Byt bild" : "Välj bild"}
+          </button>
+          {shown && (
+            <button
+              type="button"
+              onClick={() => {
+                setPicked(null);
+                setRemoved(true);
+                if (input.current) input.current.value = "";
+                input.current?.dispatchEvent(new Event("input", { bubbles: true }));
+              }}
+              className="cursor-pointer text-[13px] font-semibold text-muted underline underline-offset-2 hover:text-[#b3261e]"
+            >
+              Ta bort bilden
+            </button>
+          )}
+        </div>
+      </div>
+      <input type="hidden" name={name} value={removed ? "" : (current ?? "")} />
+      <input
+        ref={input}
+        type="file"
+        name={`${name}__file`}
+        accept="image/jpeg,image/png,image/webp"
+        tabIndex={-1}
+        aria-hidden="true"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          setPicked(f ? URL.createObjectURL(f) : null);
+          if (f) setRemoved(false);
+        }}
+      />
+      {error && <span className="text-[13px] font-semibold text-[#b3261e]">{error}</span>}
+      <span className="text-[13px] text-muted">{hint ?? "JPG, PNG eller WebP, högst 10 MB."}</span>
+    </div>
+  );
+}
+
 // ───────────────────────── List editor ─────────────────────────
 
 export type ListField = {
   name: string;
   label: string;
-  /** "lines": a string[] edited as one item per line. */
-  type?: "line" | "text" | "select" | "date" | "time" | "number" | "url" | "email" | "lines";
+  /**
+   * "lines": a string[] edited as one item per line. "image": an image URL with
+   * upload — resolve uploads in the action with resolveListImages().
+   */
+  type?: "line" | "text" | "select" | "date" | "time" | "number" | "url" | "email" | "lines" | "image";
   options?: { value: string; label: string }[];
   placeholder?: string;
   hint?: string;
@@ -466,6 +569,8 @@ export function ListEditor<T extends object>({
                   <ListFieldInput
                     key={f.name}
                     field={f}
+                    fileName={`${name}__file__${row.__key}__${f.name}`}
+                    onUpload={(inputName) => update(row.__key, `${f.name}__upload`, inputName)}
                     value={row[f.name]}
                     error={errors[`${name}.${i}.${f.name}`]}
                     errorKey={`${name}.${i}.${f.name}`}
@@ -494,16 +599,24 @@ function ListFieldInput({
   error,
   errorKey,
   onChange,
+  fileName,
+  onUpload,
 }: {
   field: ListField;
   value: unknown;
   error?: string;
   errorKey: string;
   onChange: (v: unknown) => void;
+  /** Name of this row's file input (type "image"). */
+  fileName: string;
+  /** Tell the row which file input holds a new image (or null). */
+  onUpload: (inputName: string | null) => void;
 }) {
   const id = useId();
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [picked, setPicked] = useState<string | null>(null);
   const type = f.type ?? "line";
-  const long = type === "text" || type === "lines";
+  const long = type === "text" || type === "lines" || type === "image";
   const span = f.span ?? (long ? 6 : 3);
   const describedBy = [error && `${id}-err`, f.hint && `${id}-hint`].filter(Boolean).join(" ") || undefined;
   const common = {
@@ -513,7 +626,53 @@ function ListFieldInput({
   } as const;
 
   let control: ReactNode;
-  if (type === "select") {
+  if (type === "image") {
+    const shown = picked ?? (value ? String(value) : undefined);
+    control = (
+      <div className="flex flex-wrap items-center gap-3">
+        <ImagePreview src={shown} contain />
+        <div className="flex flex-col items-start gap-1.5">
+          <button
+            id={id}
+            type="button"
+            onClick={() => fileInput.current?.click()}
+            className="btn btn-outline min-h-10 bg-white px-3 text-[14px]"
+          >
+            {shown ? "Byt bild" : "Välj bild"}
+          </button>
+          {shown && (
+            <button
+              type="button"
+              onClick={() => {
+                setPicked(null);
+                if (fileInput.current) fileInput.current.value = "";
+                onUpload(null);
+                onChange("");
+              }}
+              className="cursor-pointer text-[13px] font-semibold text-muted underline underline-offset-2 hover:text-[#b3261e]"
+            >
+              Ta bort bilden
+            </button>
+          )}
+        </div>
+        <input
+          ref={fileInput}
+          type="file"
+          name={fileName}
+          accept="image/jpeg,image/png,image/webp"
+          tabIndex={-1}
+          aria-hidden="true"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (picked) URL.revokeObjectURL(picked);
+            setPicked(file ? URL.createObjectURL(file) : null);
+            onUpload(file ? fileName : null);
+          }}
+        />
+      </div>
+    );
+  } else if (type === "select") {
     control = (
       <select {...common} value={String(value ?? "")} onChange={(e) => onChange(e.target.value)} className={`${fieldClass} cursor-pointer`}>
         {f.options?.map((o) => (
