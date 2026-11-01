@@ -58,7 +58,11 @@ export async function SiteFooter() {
       <div className="relative mx-auto flex max-w-[1200px] flex-wrap justify-between gap-2 border-t border-ink-2 px-4 pt-4 pb-8 text-[13px] text-[#CFC8C4] md:px-6">
         <span>{t("smallPrint")}</span>
         <span>
-          Demo av nya teamblekinge.nu · <ResetDemoButton />
+          Demo av nya teamblekinge.nu ·{" "}
+          <Link href="/om-demon" className="text-[#CFC8C4] underline underline-offset-2 hover:text-orange">
+            Så fungerar demon
+          </Link>{" "}
+          · <ResetDemoButton />
         </span>
       </div>
     </footer>
