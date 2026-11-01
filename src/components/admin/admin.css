@@ -48,3 +48,14 @@
     transform: translateY(-18px) rotate(-14deg);
   }
 }
+
+/* The delete confirmation leans in like a card being put down. */
+.motion .confirm-dialog[open] {
+  animation: confirm-in 0.45s var(--ease-sprint, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+@keyframes confirm-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) rotate(-2.5deg) scale(0.97);
+  }
+}

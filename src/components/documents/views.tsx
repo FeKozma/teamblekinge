@@ -1,27 +1,27 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties } from "react";
 import Link from "next/link";
-import { IconChevronRight, IconFolder, IconInfo, IconLock } from "@/components/icons";
+import { IconChevronRight, IconFolder, IconInfo, IconLock, IconUpload } from "@/components/icons";
+import { IconExternal } from "@/components/public/icons";
 import { SectionHeading, SpeedLines } from "@/components/ui";
 import {
+  docFileHref,
   docHref,
   folderHref,
   kindLabels,
   longDateWithYear,
+  uploadLabel,
   type Crumb,
   type DocFile,
-  type DocKind,
   type Visibility,
 } from "@/lib/data/documents";
 import { people } from "@/lib/data/users";
-import { Breadcrumbs, extOf, FileGlyph, VisibilityBadge } from "./bits";
+import { BigFileGlyph, Breadcrumbs, extOf, FileGlyph, IconDownload, VisibilityBadge } from "./bits";
 import { CopyLinkButton } from "./CopyLinkButton";
-import { DownloadButton } from "./DownloadButton";
-import { PdfPreview } from "./PdfPreview";
 
-// Presentational views for /dokument. No server-only APIs, so the client-side
-// fallback for demo uploads can render exactly the same markup.
+// Presentational views for /dokument. The page resolves the archive and the
+// visitor's access; these only render what they are given.
 
-export type ViewDoc = DocFile & { demo?: true; summary?: string; effective?: Visibility };
+export type ViewDoc = DocFile & { effective?: Visibility };
 
 export type FolderCardData = {
   title: string;
@@ -35,15 +35,16 @@ export type FolderCardData = {
 const SHARE_NOTE =
   "Länkarna fungerar i inlägg, mejl och Facebookgruppen. Den som inte är inloggad loggar in och hamnar sedan direkt på dokumentet.";
 
-/** Small "Demo" marker on things that only exist in this browser. */
-export function DemoTag() {
+/** For board members on the public pages: straight to the upload form, with this folder chosen. */
+export function UploadButton({ path, onDark = false }: { path: string[]; onDark?: boolean }) {
   return (
-    <span
-      title="Uppladdad i demon – finns bara i den här webbläsaren"
-      className="inline-flex flex-none items-center rounded-full border border-dashed border-orange-dark/50 bg-orange-soft px-2 py-0.5 text-[11px] font-bold tracking-[0.3px] text-orange-dark uppercase"
+    <Link
+      href={path.length ? `/admin/dokument/ladda-upp/${path.join("/")}` : "/admin/dokument/ladda-upp"}
+      className={`btn ${onDark ? "btn-primary btn-lg" : "btn-dark"}`}
     >
-      Demo
-    </span>
+      <IconUpload size={18} strokeWidth={2.2} />
+      Ladda upp dokument
+    </Link>
   );
 }
 
@@ -58,13 +59,10 @@ export function DocRow({ doc, folderVisibility }: { doc: ViewDoc; folderVisibili
       >
         <FileGlyph ext={extOf(doc.fileName)} size={42} />
         <span className="flex min-w-0 flex-1 flex-col gap-1">
-          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="leading-snug font-bold underline-offset-2 group-hover:underline">{doc.title}</span>
-            {doc.demo && <DemoTag />}
-          </span>
+          <span className="leading-snug font-bold underline-offset-2 group-hover:underline">{doc.title}</span>
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-muted">
             <span>
-              Uppladdat {doc.uploadedLabel} · {doc.size}
+              Uppladdat {uploadLabel(doc.uploaded)} · {doc.size}
             </span>
             {doc.announced && (
               <span className="font-semibold text-green">Nyhet · {doc.announced.category}</span>
@@ -155,8 +153,7 @@ export function FolderView({
   docs,
   membersOnly = 0,
   loginHref,
-  extraFolders,
-  extraRows,
+  board = false,
 }: {
   title: string;
   description?: string;
@@ -168,8 +165,8 @@ export function FolderView({
   docs: ViewDoc[];
   membersOnly?: number;
   loginHref: string;
-  extraFolders?: ReactNode;
-  extraRows?: ReactNode;
+  /** A board member is looking: offer the upload button. */
+  board?: boolean;
 }) {
   return (
     <div className="mx-auto flex max-w-[1200px] flex-col gap-6 px-4 pt-8 pb-16 md:px-6 md:pt-10">
@@ -182,13 +179,15 @@ export function FolderView({
           </h1>
           <VisibilityBadge visibility={visibility} />
         </div>
-        <CopyLinkButton href={folderHref(path)} label="Kopiera länk till mappen" variant="outline" icon />
+        <div className="flex flex-wrap items-center gap-2.5">
+          {board && <UploadButton path={path} />}
+          <CopyLinkButton href={folderHref(path)} label="Kopiera länk till mappen" variant="outline" icon />
+        </div>
       </div>
       {description && <p className="-mt-2 mb-0 max-w-[640px] text-[16px] text-muted">{description}</p>}
 
-      {(folders.length > 0 || extraFolders) && (
+      {folders.length > 0 && (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-5">
-          {extraFolders}
           {folders.map((f, i) => (
             <FolderCard key={f.path.join("/")} f={f} i={i} />
           ))}
@@ -198,7 +197,6 @@ export function FolderView({
       {docs.length > 0 ? (
         <section aria-label={`Dokument i ${title}`} className="card overflow-hidden" data-reveal="up">
           <ul className="m-0 list-none divide-y divide-line p-0">
-            {extraRows}
             {docs.map((d) => (
               <DocRow key={d.id} doc={d} folderVisibility={visibility} />
             ))}
@@ -209,8 +207,7 @@ export function FolderView({
           </p>
         </section>
       ) : (
-        folders.length === 0 &&
-        !extraFolders && <p className="card m-0 p-6 text-center text-muted">Här finns inga dokument ännu.</p>
+        folders.length === 0 && <p className="card m-0 p-6 text-center text-muted">Här finns inga dokument ännu.</p>
       )}
 
       {membersOnly > 0 && <MembersHint count={membersOnly} loginHref={loginHref} />}
@@ -225,6 +222,7 @@ export function DocumentView({
   folderLink,
   visibility,
   siblings,
+  newsHref,
 }: {
   doc: ViewDoc;
   /** All folders down to the document's own. */
@@ -233,19 +231,34 @@ export function DocumentView({
   folderLink: string;
   visibility: Visibility;
   siblings: ViewDoc[];
+  /** The news item that announced the document, if it still exists. */
+  newsHref?: string;
 }) {
   const author = people[doc.uploadedBy]?.name;
   const folderTitle = crumbs[crumbs.length - 1]?.title ?? "mappen";
+  const pdf = docFileHref(doc);
   return (
     <div className="mx-auto flex max-w-[1200px] flex-col gap-8 px-4 pt-8 pb-16 md:px-6 md:pt-10">
       <Breadcrumbs crumbs={crumbs} current={doc.title} />
 
       <div className="flex flex-wrap items-start gap-x-14 gap-y-10">
-        <div className="flex min-w-0 flex-[1_1_300px] justify-center px-3 pt-2 md:justify-start md:px-0">
-          <PdfPreview title={doc.title} kind={doc.kind} pages={doc.pages} />
+        <div className="flex min-w-0 flex-[1_1_260px] justify-center px-6 pt-2 md:justify-start md:px-4">
+          {/* The big sheet opens the PDF too — a duplicate of the button, so kept out of the tab order. */}
+          <a
+            href={pdf}
+            target="_blank"
+            rel="noopener"
+            tabIndex={-1}
+            aria-hidden="true"
+            data-settle
+            style={{ "--rest-rotate": "-3deg" } as CSSProperties}
+            className="straighten-hover group block w-full max-w-[190px] md:max-w-[280px]"
+          >
+            <BigFileGlyph label={kindLabels[doc.kind]} />
+          </a>
         </div>
 
-        <div className="flex min-w-0 flex-[1.25_1_340px] flex-col gap-5">
+        <div className="flex min-w-0 flex-[1.4_1_340px] flex-col gap-5">
           <span className="run-in self-start bg-orange px-3 py-1 text-[13px] font-extrabold tracking-[1px] text-ink uppercase [rotate:-2deg]">
             {kindLabels[doc.kind]}
           </span>
@@ -257,9 +270,31 @@ export function DocumentView({
           </h1>
           <div className="run-in flex flex-wrap items-center gap-2" style={{ "--i": 2 } as CSSProperties}>
             <VisibilityBadge visibility={visibility} />
-            {doc.demo && <DemoTag />}
           </div>
           {doc.summary && <p className="m-0 text-[17px]">{doc.summary}</p>}
+
+          <div className="run-in flex flex-wrap gap-3" style={{ "--i": 3 } as CSSProperties}>
+            <a href={pdf} target="_blank" rel="noopener" className="btn btn-primary btn-lg flex-1 sm:flex-none">
+              <IconExternal size={18} strokeWidth={2.4} />
+              Öppna PDF
+              <span className="sr-only">(öppnas i ny flik)</span>
+            </a>
+            <a
+              href={docFileHref(doc, { download: true })}
+              download={doc.fileName}
+              className="btn btn-outline btn-lg flex-1 sm:flex-none"
+            >
+              <IconDownload size={18} strokeWidth={2.4} />
+              Ladda ner
+            </a>
+            <CopyLinkButton
+              href={docHref(doc)}
+              variant="outline"
+              icon
+              what={doc.title}
+              className="min-h-[52px]! flex-1 sm:flex-none"
+            />
+          </div>
 
           <dl
             className="card m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-6 gap-y-3 p-5 text-[15px]"
@@ -275,7 +310,8 @@ export function DocumentView({
               {doc.fileName}
               <span className="text-muted">
                 {" "}
-                · {doc.size} · {doc.pages === 1 ? "1 sida" : `${doc.pages} sidor`}
+                · {doc.size}
+                {doc.pages ? ` · ${doc.pages === 1 ? "1 sida" : `${doc.pages} sidor`}` : ""}
               </span>
             </dd>
             <dt className="text-muted">Mapp</dt>
@@ -289,10 +325,10 @@ export function DocumentView({
                 <dt className="text-muted">Meddelat</dt>
                 <dd className="m-0">
                   <span className="font-semibold text-green">Nyhet · {doc.announced.category}</span>
-                  {doc.announced.newsSlug && (
+                  {newsHref && (
                     <>
                       {" · "}
-                      <Link href={`/nyheter/${doc.announced.newsSlug}`} className="font-semibold">
+                      <Link href={newsHref} className="font-semibold">
                         Läs nyheten
                       </Link>
                     </>
@@ -302,15 +338,14 @@ export function DocumentView({
             )}
           </dl>
 
-          <div className="flex flex-wrap gap-3">
-            <DownloadButton fileName={doc.fileName} size={doc.size} />
-            <CopyLinkButton href={docHref(doc)} variant="outline" icon what={doc.title} />
-          </div>
           <p className="m-0 flex gap-2.5 text-[14px] text-muted">
             <IconInfo size={18} className="mt-0.5 flex-none text-purple" />
-            {visibility === "alla"
-              ? "Dokumentet är öppet för alla – länken fungerar utan inloggning, i mejl, inlägg och Facebookgruppen."
-              : "Dela länken i mejl, inlägg eller Facebookgruppen. Den som inte är inloggad loggar in och hamnar sedan direkt här."}
+            <span>
+              ”Öppna PDF” visar dokumentet i en ny flik, i webbläsarens egen PDF-visare.{" "}
+              {visibility === "alla"
+                ? "Dokumentet är öppet för alla – länken fungerar utan inloggning, i mejl, inlägg och Facebookgruppen."
+                : "Dela länken i mejl, inlägg eller Facebookgruppen. Den som inte är inloggad loggar in och hamnar sedan direkt här."}
+            </span>
           </p>
         </div>
       </div>
@@ -338,8 +373,7 @@ export function LoginGate({
   title,
   what,
   boardOnly = false,
-  kind = "protokoll",
-  pages = 3,
+  label,
   loginHref,
 }: {
   crumbs: Crumb[];
@@ -347,8 +381,8 @@ export function LoginGate({
   title?: string;
   what: "dokument" | "mapp";
   boardOnly?: boolean;
-  kind?: DocKind;
-  pages?: number;
+  /** On the sheet, e.g. "Protokoll"; left out for board-only. */
+  label?: string;
   loginHref: string;
 }) {
   const heading = title ?? (what === "mapp" ? "Logga in för att se mappen" : "Logga in för att se dokumentet");
@@ -370,14 +404,8 @@ export function LoginGate({
           ]}
         />
         <div className="relative flex flex-wrap items-center gap-x-12 gap-y-8 px-6 pt-8 pb-16 md:px-10 md:pt-10 md:pb-20">
-          <div className="relative mx-auto w-full max-w-[260px] flex-[1_1_220px] px-2">
-            <PdfPreview title={title ?? "Dokument"} kind={kind} pages={pages} blurred />
-            <span
-              aria-hidden="true"
-              className="tilt-pop absolute top-1/2 left-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 -rotate-6 items-center justify-center rounded-xl bg-orange text-ink shadow-[0_14px_30px_rgba(0,0,0,0.4)]"
-            >
-              <IconLock size={30} strokeWidth={2.2} />
-            </span>
+          <div className="relative mx-auto w-full max-w-[220px] flex-[1_1_180px] px-4">
+            <BigFileGlyph label={boardOnly ? undefined : label} locked className="-rotate-3" />
           </div>
           <div className="flex min-w-0 flex-[1.5_1_300px] flex-col gap-4">
             <span className="run-in self-start bg-purple px-3 py-1 text-[13px] font-extrabold tracking-[1px] text-white uppercase [rotate:-2deg]">
@@ -405,34 +433,6 @@ export function LoginGate({
           </div>
         </div>
       </section>
-    </div>
-  );
-}
-
-export function NotFoundHere() {
-  return (
-    <div className="mx-auto flex max-w-[720px] flex-col items-start gap-4 px-4 pt-12 pb-20 md:px-6">
-      <span className="flex h-12 w-12 -rotate-3 items-center justify-center rounded-lg bg-orange-soft text-orange-dark">
-        <IconFolder size={24} />
-      </span>
-      <h1 className="m-0 text-[30px] font-extrabold tracking-[-0.8px]">Hittade inget här</h1>
-      <p className="m-0 text-[17px] text-muted">
-        Dokumentet eller mappen finns inte, eller så har det flyttats. Börja om från Dokument så hittar du rätt.
-      </p>
-      <Link href="/dokument" className="btn btn-dark">
-        Till Dokument
-      </Link>
-    </div>
-  );
-}
-
-/** Shown while localStorage is read for demo uploads. */
-export function ViewSkeleton() {
-  return (
-    <div aria-hidden="true" className="mx-auto flex max-w-[1200px] flex-col gap-6 px-4 pt-8 pb-16 md:px-6 md:pt-10">
-      <span className="h-4 w-56 motion-safe:animate-pulse rounded bg-line" />
-      <span className="h-10 w-80 max-w-full motion-safe:animate-pulse rounded bg-line" />
-      <span className="h-56 w-full motion-safe:animate-pulse rounded-xl bg-white" />
     </div>
   );
 }
