@@ -101,7 +101,10 @@ export default async function AdminHome() {
           <IconInfo size={22} className="flex-none text-purple" />
           <p className="m-0 min-w-[220px] flex-1 text-[14px]">
             <strong>Demo:</strong> dina ändringar syns bara för dig, och de försvinner när du stänger webbläsaren. På
-            den riktiga webbplatsen syns de för alla besökare. Vill du börja om kan du återställa allt direkt.
+            den riktiga webbplatsen syns de för alla besökare. Vill du börja om kan du återställa allt direkt.{" "}
+            <Link href="/om-demon" className="font-semibold text-purple">
+              Så fungerar det på riktigt
+            </Link>
           </p>
           <ResetContentButton />
         </section>
