@@ -17,8 +17,9 @@ export async function savePageTextsAction(pageId: string, data: FormData) {
       if (typeof raw !== "string") continue;
       // Keep the editor's line breaks, but not stray spaces at the ends.
       const value = raw.replace(/\r\n/g, "\n").trim();
-      if (!value) errors[f.key] = "Fältet kan inte vara tomt. Vill du ha originaltexten, tryck ”Återställ”.";
-      else if (value !== f.value) edited[f.key] = value;
+      if (!value && !f.optional) {
+        errors[f.key] = "Fältet kan inte vara tomt. Vill du ha originaltexten, tryck ”Återställ originaltexten”.";
+      } else if (value !== f.value) edited[f.key] = value;
     }
   }
   if (Object.keys(errors).length) return invalid(errors);

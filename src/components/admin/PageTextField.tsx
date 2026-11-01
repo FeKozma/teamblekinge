@@ -13,6 +13,7 @@ export function PageTextField({
   value,
   original,
   long = false,
+  optional = false,
   hint,
 }: {
   name: string;
@@ -20,6 +21,7 @@ export function PageTextField({
   value: string;
   original: string;
   long?: boolean;
+  optional?: boolean;
   hint?: string;
 }) {
   const ref = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
@@ -44,6 +46,7 @@ export function PageTextField({
       label={
         <span className="flex flex-wrap items-center gap-2">
           {label}
+          {optional && <span className="font-normal text-muted">(valfritt – tomt döljer det)</span>}
           {changed && (
             <span className="rounded-full bg-orange-soft px-2 py-px text-[11px] font-bold tracking-[0.3px] text-orange-dark uppercase">
               Ändrad

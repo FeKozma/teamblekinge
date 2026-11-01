@@ -42,6 +42,14 @@ export const adminSections: AdminSection[] = [
     publicLabel: "Dokument",
   },
   {
+    slug: "aktuellt",
+    label: "Aktuellt-bandet",
+    group: "Innehåll",
+    about: "Den orange raden överst på startsidan: visa eller dölj den, text, länk och sista dag.",
+    publicHref: "/",
+    publicLabel: "Startsidan",
+  },
+  {
     slug: "sidor",
     label: "Sidtexter",
     group: "Innehåll",

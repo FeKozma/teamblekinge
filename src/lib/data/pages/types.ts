@@ -14,6 +14,8 @@ export type TextField = {
   long?: boolean;
   /** Extra help under the field, e.g. "Visas på startsidan också". */
   hint?: string;
+  /** May be left empty (the page then leaves the bit out). */
+  optional?: boolean;
 };
 
 export type TextSection = {
@@ -29,6 +31,11 @@ export type PageTextsDef = {
   /** The public page (and anchor) the texts appear on. */
   href: string;
   sections: TextSection[];
+  /**
+   * Other editors with content on this page, shown at the top of its text
+   * editor, e.g. { href: "/admin/aktuellt", label: "Aktuellt-bandet", text: "Den orange raden överst" }.
+   */
+  related?: { href: string; label: string; text: string }[];
 };
 
 /** Split a long text into paragraphs on blank lines. */
