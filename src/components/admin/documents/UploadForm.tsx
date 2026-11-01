@@ -1,36 +1,39 @@
 "use client";
 
-import { useId, useRef, useState, type DragEvent, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useId, useRef, useState, useTransition, type DragEvent, type FormEvent } from "react";
+import { uploadProtocolAction } from "@/app/admin/dokument/actions";
 import { IconUpload } from "@/components/icons";
 import { extOf, FileGlyph } from "@/components/documents/bits";
-import { toast } from "@/components/documents/Toaster";
-import { useUploadedDocs } from "@/components/documents/uploads";
 import {
+  folderTrail,
+  folderVisibility,
+  longDateWithYear,
+  moreOpen,
   protocolTarget,
   protocolTemplates,
-  samePath,
-  uploadLabel,
-  visibilityLabels,
+  type DocFolder,
+  type DocRef,
   type ProtocolTemplate,
-  type UploadedDoc,
   type Visibility,
 } from "@/lib/data/documents";
 import { addDays, weekday } from "@/lib/format";
-import "./admin.css";
+import { placeholderPdf } from "@/lib/pdf";
+import { pdfProblem, VisibilityChoice } from "./fields";
+import { adminFolderHref } from "./links";
+import "../admin.css";
 
-const ACCEPT = ".pdf,.doc,.docx,.odt,application/pdf";
-const ALLOWED = /\.(pdf|docx?|odt)$/i;
 const SUMMARY_MAX = 280;
 
-type PickedFile = { name: string; size: number };
+type Errors = Partial<Record<"file" | "date" | "visibility" | "summary" | "template" | "form", string>>;
 
 const field =
   "min-h-11 w-full rounded-lg border-[1.5px] border-[#cfc8c4] bg-white px-2.5 text-[15px] font-normal text-ink aria-[invalid=true]:border-[#b3261e]";
 
-function formatSize(bytes: number) {
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} kB`;
-  return `${(bytes / 1024 / 1024).toFixed(1).replace(".", ",")} MB`;
-}
+const sizeLabel = (bytes: number) =>
+  bytes < 1024 * 1024
+    ? `${Math.max(1, Math.round(bytes / 1024))} kB`
+    : `${(bytes / 1024 / 1024).toFixed(1).replace(".", ",")} MB`;
 
 /** Most recent Monday before today that has no protocol yet — for the example file. */
 function suggestDate(today: string, taken: (date: string) => boolean) {
@@ -50,47 +53,62 @@ function ErrorText({ id, children }: { id: string; children?: string }) {
 
 /**
  * "Ladda upp protokoll" from drawup 09. Everything is derived live from the
- * template and meeting date: the name, the folder, and the news post that
- * announces it. DEMO: nothing is uploaded — the protocol is saved in this
- * browser (useDemoState) and shows up in the table and on /dokument.
+ * template and meeting date: the name, the folder (created if missing), and
+ * the news item that announces it. The file is uploaded for real.
  */
 export function UploadForm({
   today,
-  userId,
-  onUploaded,
+  archive,
   className = "",
 }: {
   today: string;
-  userId: string;
-  onUploaded: (doc: UploadedDoc) => void;
+  /** The folder tree and where documents already are — for the live name and duplicate check. */
+  archive: { root: DocFolder; docs: DocRef[] };
   className?: string;
 }) {
   const id = useId();
-  const [uploads, setUploads] = useUploadedDocs();
+  const router = useRouter();
   const [template, setTemplate] = useState<ProtocolTemplate>("styrelse");
   const [date, setDate] = useState("");
   const [dateFromFile, setDateFromFile] = useState(false);
-  const [file, setFile] = useState<PickedFile | null>(null);
+  const [file, setFile] = useState<File | null>(null);
   const [visibility, setVisibility] = useState<Visibility>("medlemmar");
   const [announce, setAnnounce] = useState(true);
   const [summary, setSummary] = useState("");
-  const [errors, setErrors] = useState<{ file?: string; date?: string }>({});
+  const [errors, setErrors] = useState<Errors>({});
   const [dragging, setDragging] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [busy, startTransition] = useTransition();
   const input = useRef<HTMLInputElement>(null);
   const fileButton = useRef<HTMLButtonElement>(null);
   const dateInput = useRef<HTMLInputElement>(null);
 
-  const target = protocolTarget(template, date);
-  const taken = (folder: string[], slug: string) =>
-    uploads.some((u) => u.slug === slug && samePath(u.folder, folder));
-  const duplicate = !!target && (target.exists || taken(target.folder, target.slug));
-  const canAnnounce = visibility !== "styrelsen";
+  const target = protocolTarget(archive, template, date);
+  const duplicate = !!target?.exists;
+  // A new year folder takes the visibility of Protokoll (members, unless changed).
+  const limit: Visibility = !target
+    ? "alla"
+    : folderTrail(archive.root, target.folder)
+      ? folderVisibility(archive.root, target.folder)
+      : folderTrail(archive.root, target.folder.slice(0, 1))
+        ? folderVisibility(archive.root, target.folder.slice(0, 1))
+        : "medlemmar";
+  const shown = moreOpen(visibility, limit) ? limit : visibility;
+  const canAnnounce = shown !== "styrelsen";
   const willAnnounce = announce && canAnnounce;
+  const dirty = !!file || !!date || !!summary;
 
-  function pick(f: PickedFile) {
-    if (!ALLOWED.test(f.name)) {
-      setErrors((e) => ({ ...e, file: "Välj en PDF eller Word-fil – andra filtyper kan inte bli protokoll." }));
+  useEffect(() => {
+    if (!dirty || busy) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty, busy]);
+
+  function pick(f: File) {
+    const problem = pdfProblem(f);
+    if (problem) {
+      setErrors((e) => ({ ...e, file: problem }));
+      if (input.current) input.current.value = "";
       return;
     }
     setFile(f);
@@ -104,22 +122,26 @@ export function UploadForm({
     }
   }
 
+  /** A real (generated) PDF, so the demo can be tried without a file at hand. */
   function pickExample() {
     const d =
       date ||
-      suggestDate(today, (x) => {
-        const t = protocolTarget(template, x);
-        return !!t && (t.exists || taken(t.folder, t.slug));
-      });
-    const what = template === "arsmote" ? "årsmöte" : template === "ovrigt" ? "möte" : "styrelsemöte";
-    pick({ name: `Protokoll ${what} ${d}.pdf`, size: 203_776 });
+      suggestDate(today, (x) => !!protocolTarget(archive, template, x)?.exists);
+    const t = protocolTarget(archive, template, d)!;
+    const bytes = placeholderPdf({
+      title: t.title,
+      kind: "Protokoll",
+      folder: t.folderTitles.join(" › "),
+      uploaded: longDateWithYear(today),
+    });
+    pick(new File([bytes as Uint8Array<ArrayBuffer>], t.fileName, { type: "application/pdf" }));
   }
 
   function onDrop(e: DragEvent) {
     e.preventDefault();
     setDragging(false);
     const f = e.dataTransfer.files?.[0];
-    if (f) pick({ name: f.name, size: f.size });
+    if (f) pick(f);
   }
 
   function reset() {
@@ -137,7 +159,7 @@ export function UploadForm({
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (busy) return;
-    const errs: { file?: string; date?: string } = {};
+    const errs: Errors = {};
     if (!date) errs.date = "Fyll i mötesdatum – det bestämmer namn och mapp.";
     else if (date > today) errs.date = "Mötesdatumet kan inte ligga i framtiden.";
     else if (duplicate && target) errs.date = `${target.title} finns redan i ${target.folderTitles.join(" › ")}.`;
@@ -145,39 +167,27 @@ export function UploadForm({
     setErrors(errs);
     if (errs.date) return dateInput.current?.focus();
     if (errs.file) return fileButton.current?.focus();
-    if (!target || !file) return;
+    if (!file) return;
 
-    setBusy(true);
-    // A short pause so it feels like an upload; nothing leaves the browser.
-    setTimeout(() => {
-      const doc: UploadedDoc = {
-        id: [...target.folder, target.slug].join("/"),
-        title: target.title,
-        slug: target.slug,
-        folder: target.folder,
-        folderTitles: target.folderTitles,
-        kind: "protokoll",
-        uploaded: today,
-        uploadedLabel: uploadLabel(today),
-        uploadedBy: userId,
-        visibility,
-        size: formatSize(file.size),
-        pages: Math.min(12, Math.max(1, Math.round(file.size / 70_000))),
-        fileName: file.name,
-        announced: willAnnounce ? { category: "Styrelsen" } : undefined,
-        summary: summary.trim() || undefined,
-        demo: true,
-      };
-      setUploads((prev) => [doc, ...prev.filter((u) => u.id !== doc.id)]);
-      toast(
-        willAnnounce
-          ? `${doc.title} är uppladdat och nyheten publicerad. (Demo – sparas bara i din webbläsare.)`
-          : `${doc.title} är uppladdat. (Demo – sparas bara i din webbläsare.)`,
-      );
+    const data = new FormData();
+    data.set("template", template);
+    data.set("date", date);
+    data.set("visibility", shown);
+    if (willAnnounce) data.set("announce", "on");
+    data.set("summary", summary);
+    data.set("file", file);
+    startTransition(async () => {
+      const res = await uploadProtocolAction(data);
+      if (!res?.ok || !res.doc) {
+        setErrors({ ...(res?.errors ?? {}), form: res?.message });
+        if (res?.errors?.date) dateInput.current?.focus();
+        else if (res?.errors?.file) fileButton.current?.focus();
+        return;
+      }
       reset();
-      setBusy(false);
-      onUploaded(doc);
-    }, 650);
+      // The folder page highlights the new row and confirms with a toast.
+      router.push(`${adminFolderHref(res.doc.folder)}?ny=${encodeURIComponent(res.doc.id)}`);
+    });
   }
 
   const dateErr = `${id}-date-err`;
@@ -186,8 +196,9 @@ export function UploadForm({
 
   return (
     <section
+      id="ladda-upp-protokoll"
       aria-labelledby={`${id}-h`}
-      className={`card flex min-w-0 flex-col gap-4 p-5 ${className}`}
+      className={`card flex min-w-0 scroll-mt-4 flex-col gap-4 p-5 ${className}`}
       data-reveal="right"
     >
       <h2 id={`${id}-h`} className="m-0 flex items-center gap-3 text-[20px] font-extrabold">
@@ -277,7 +288,7 @@ export function UploadForm({
                 <>
                   <span className="text-[14px] font-bold [overflow-wrap:anywhere]">{file.name}</span>
                   <span className="text-[12px] text-muted">
-                    {formatSize(file.size)} · Dra hit en annan fil eller byt
+                    {sizeLabel(file.size)} · Dra hit en annan fil eller byt
                   </span>
                 </>
               ) : (
@@ -299,13 +310,13 @@ export function UploadForm({
             <input
               ref={input}
               type="file"
-              accept={ACCEPT}
+              accept=".pdf,application/pdf"
               tabIndex={-1}
               aria-hidden="true"
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0];
-                if (f) pick({ name: f.name, size: f.size });
+                if (f) pick(f);
               }}
             />
           </div>
@@ -339,27 +350,15 @@ export function UploadForm({
           )}
         </p>
 
-        <fieldset className="m-0 flex flex-col gap-1.5 border-0 p-0">
-          <legend className="pb-1.5 text-[13px] font-semibold">Vem får se dokumentet?</legend>
-          <div className="flex flex-wrap gap-2">
-            {(["alla", "medlemmar", "styrelsen"] as const).map((v) => (
-              <label
-                key={v}
-                className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border-[1.5px] border-[#cfc8c4] bg-white px-3 text-[14px] transition-colors hover:border-ink has-checked:border-ink has-checked:bg-paper has-checked:font-semibold"
-              >
-                <input
-                  type="radio"
-                  name={`${id}-vis`}
-                  value={v}
-                  checked={visibility === v}
-                  onChange={() => setVisibility(v)}
-                  className="h-4 w-4 accent-orange-dark"
-                />
-                {visibilityLabels[v]}
-              </label>
-            ))}
-          </div>
-        </fieldset>
+        <VisibilityChoice
+          name={`${id}-vis`}
+          value={shown}
+          onChange={setVisibility}
+          limit={limit}
+          limitName={target?.folderTitles.at(-1)}
+          legend="Vem får se protokollet?"
+        />
+        <ErrorText id={`${id}-vis-err`}>{errors.visibility}</ErrorText>
 
         <div className="flex flex-col gap-3 border-t border-line pt-4">
           <label className={`flex items-start gap-2.5 font-bold ${canAnnounce ? "cursor-pointer" : "text-muted"}`}>
@@ -374,7 +373,7 @@ export function UploadForm({
               Meddela medlemmarna
               <span className="text-[13px] font-normal text-muted">
                 {canAnnounce
-                  ? "En nyhet för medlemmar i kategorin Styrelsen, med direktlänk. Den som följer Styrelsen får en avisering."
+                  ? "En nyhet i kategorin Styrelsen, med direktlänk. På riktiga webbplatsen får den som följer Styrelsen en avisering – i demon skickas inga."
                   : "Dokument som bara styrelsen ser meddelas inte medlemmarna."}
               </span>
             </span>
@@ -395,15 +394,16 @@ export function UploadForm({
               placeholder="T.ex. beslut om nya klubbkläder och datum för årsmötet"
               className={`${field} resize-y py-2.5`}
             />
+            <span className="font-normal text-muted">Visas på dokumentets sida och i nyheten.</span>
           </label>
 
           {willAnnounce ? (
             <div className="flex flex-col gap-1.5 rounded-[10px] bg-paper p-3.5">
               <span className="text-[12px] font-bold tracking-[0.5px] text-muted uppercase">
-                Förhandsvisning av inlägget
+                Förhandsvisning av nyheten
               </span>
               <span className="text-[12px] text-muted">
-                Nyheter › Styrelsen · {visibility === "alla" ? "Öppen för alla" : "Endast medlemmar"}
+                Nyheter › Styrelsen · {shown === "alla" ? "Öppen för alla" : "Endast medlemmar"}
               </span>
               <span className="text-[16px] leading-snug font-extrabold">
                 {target ? (
@@ -424,6 +424,11 @@ export function UploadForm({
           )}
         </div>
 
+        {errors.form && (
+          <p role="alert" className="m-0 text-[14px] font-semibold text-[#b3261e]">
+            {errors.form}
+          </p>
+        )}
         <div className="flex flex-wrap justify-end gap-2.5">
           <button
             type="reset"
@@ -446,7 +451,7 @@ export function UploadForm({
           </button>
         </div>
         <p className="m-0 text-right text-[12px] text-muted">
-          Demo: filen lämnar aldrig din dator – uppladdningen sparas bara i den här webbläsaren.
+          Filen laddas upp på riktigt och syns direkt på webbplatsen – i demon bara för dig.
         </p>
       </form>
     </section>

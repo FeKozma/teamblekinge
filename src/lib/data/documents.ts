@@ -1,8 +1,9 @@
-// DEMO DATA: the club's document archive ("Dokument"). Folder names, the
-// policies and the two latest protocols (with their upload days) follow the
-// current site; earlier meeting dates, file sizes and page counts are made up.
-// The real site keeps the files in object storage and this metadata in the
-// database, and checks access on every request.
+// The club's document archive ("Dokument") — SEED and pure helpers. Folder
+// names, the policies and the two latest protocols (with their upload days)
+// follow the current site; earlier meeting dates, file sizes and page counts
+// are made up, and the seed documents have no file behind them (the PDF route
+// serves a generated example page instead). Pages read the board's edited
+// archive through lib/content/documents and pass it to these helpers.
 
 import type { NewsCategory } from "./news";
 import { monthsLong, monthsShort } from "@/lib/format";
@@ -15,6 +16,7 @@ export type Viewer = "guest" | "member" | "board";
 export type DocKind = "protokoll" | "policy" | "stadgar" | "instruktion" | "underlag";
 
 export type DocFolder = {
+  /** Part of the URL. Never changes once created, so shared links keep working. */
   slug: string;
   title: string;
   description?: string;
@@ -23,6 +25,7 @@ export type DocFolder = {
 };
 
 export type DocFile = {
+  /** Stable id (survives renames and moves). */
   id: string;
   title: string;
   slug: string;
@@ -30,23 +33,27 @@ export type DocFile = {
   folder: string[];
   kind: DocKind;
   uploaded: string; // ISO date
-  uploadedLabel: string; // "24 okt" (year added when not 2026)
   uploadedBy: string; // person id in users.ts
   visibility: Visibility;
-  size: string;
-  pages: number;
+  size: string; // "214 kB"
+  /** Unknown for some uploads. */
+  pages?: number;
+  /** The name the file gets when downloaded. */
   fileName: string;
+  /** Id of the uploaded file in the content store; seed documents have none. */
+  file?: string;
+  summary?: string;
   /** Set when a news item announced the document ("Nyhet · Styrelsen"). */
   announced?: { category: NewsCategory; newsSlug?: string };
 };
 
-/** A protocol "uploaded" from the admin demo — lives only in localStorage. */
-export type UploadedDoc = DocFile & {
-  demo: true;
-  /** Titles of the folders in `folder`; a new year folder isn't in the tree. */
-  folderTitles: string[];
-  summary?: string;
-};
+/** The whole archive: the folder tree and every document. */
+export type DocArchive = { root: DocFolder; docs: DocFile[] };
+
+/** Just enough of a document to know where it lives. */
+export type DocRef = Pick<DocFile, "folder" | "slug">;
+
+export const visibilities: Visibility[] = ["alla", "medlemmar", "styrelsen"];
 
 export const visibilityLabels: Record<Visibility, string> = {
   alla: "Alla",
@@ -62,7 +69,7 @@ export const kindLabels: Record<DocKind, string> = {
   underlag: "Underlag",
 };
 
-export const rootFolder: DocFolder = {
+const rootFolder: DocFolder = {
   slug: "",
   title: "Dokument",
   visibility: "alla",
@@ -116,14 +123,12 @@ export function uploadLabel(iso: string) {
   return `${d} ${monthsShort[m - 1]}${y === 2026 ? "" : ` ${y}`}`;
 }
 
-type DocInput = Omit<DocFile, "id" | "uploadedLabel" | "uploadedBy" | "fileName"> &
-  Partial<Pick<DocFile, "uploadedBy" | "fileName">>;
+type DocInput = Omit<DocFile, "id" | "uploadedBy" | "fileName"> & Partial<Pick<DocFile, "uploadedBy" | "fileName">>;
 
 function doc(d: DocInput): DocFile {
   return {
     ...d,
     id: [...d.folder, d.slug].join("/"),
-    uploadedLabel: uploadLabel(d.uploaded),
     uploadedBy: d.uploadedBy ?? "stina",
     fileName: d.fileName ?? `${d.title}.pdf`,
   };
@@ -143,9 +148,9 @@ const board = (date: string, uploaded: string, size: string, pages: number, news
     announced: { category: "Styrelsen", newsSlug },
   });
 
-export const documents: DocFile[] = [
+const documents: DocFile[] = [
   board("2026-10-12", "2026-10-24", "214 kB", 3, "protokoll-styrelsemote-2026-10-12"),
-  board("2026-09-07", "2026-09-13", "188 kB", 3),
+  board("2026-09-07", "2026-09-13", "188 kB", 3, "protokoll-styrelsemote-2026-09-07"),
   board("2026-08-17", "2026-08-24", "176 kB", 2),
   board("2026-06-22", "2026-07-18", "201 kB", 3),
   board("2025-11-24", "2025-12-03", "193 kB", 3),
@@ -273,6 +278,9 @@ export const documents: DocFile[] = [
   }),
 ];
 
+/** The archive until the board changes it. */
+export const seedArchive = (): DocArchive => ({ root: rootFolder, docs: documents });
+
 // ───────────────────────── Access ─────────────────────────
 
 const visibilityRank: Record<Visibility, number> = { alla: 0, medlemmar: 1, styrelsen: 2 };
@@ -291,6 +299,9 @@ export function strictest(...vs: Visibility[]): Visibility {
   return vs.reduce((a, b) => (visibilityRank[b] > visibilityRank[a] ? b : a), "alla");
 }
 
+/** Whether `v` is more open than `limit` (e.g. "alla" inside a members-only folder). */
+export const moreOpen = (v: Visibility, limit: Visibility) => visibilityRank[v] < visibilityRank[limit];
+
 // ───────────────────────── Paths ─────────────────────────
 
 export type Crumb = { title: string; href: string };
@@ -299,21 +310,26 @@ export function folderHref(path: string[]) {
   return path.length ? `/dokument/${path.join("/")}` : "/dokument";
 }
 
-export function docHref(d: { folder: string[]; slug: string }) {
+export function docHref(d: DocRef) {
   return `/dokument/${[...d.folder, d.slug].join("/")}`;
+}
+
+/** The PDF itself (opens in the browser's viewer). Access is checked like the page. */
+export function docFileHref(d: DocRef, { download = false } = {}) {
+  return `/filer/dokument/${[...d.folder, d.slug].join("/")}.pdf${download ? "?ladda-ner" : ""}`;
 }
 
 export function samePath(a: string[], b: string[]) {
   return a.length === b.length && a.every((s, i) => s === b[i]);
 }
 
-function startsWith(path: string[], prefix: string[]) {
+export function startsWith(path: string[], prefix: string[]) {
   return prefix.every((s, i) => path[i] === s);
 }
 
 /** The folders from the root down to `path` (root included), or null. */
-export function folderTrail(path: string[]): DocFolder[] | null {
-  const trail = [rootFolder];
+export function folderTrail(root: DocFolder, path: string[]): DocFolder[] | null {
+  const trail = [root];
   for (const seg of path) {
     const next = trail[trail.length - 1].folders?.find((f) => f.slug === seg);
     if (!next) return null;
@@ -327,10 +343,37 @@ export function crumbsFor(titles: string[], path: string[]): Crumb[] {
   return titles.map((title, i) => ({ title, href: folderHref(path.slice(0, i)) }));
 }
 
+/** "Protokoll › Styrelsemöte 2026" for a folder path (root left out). */
+export function folderLabel(root: DocFolder, path: string[]) {
+  return (folderTrail(root, path) ?? [])
+    .slice(1)
+    .map((f) => f.title)
+    .join(" › ");
+}
+
+/** A folder's effective visibility: the strictest along its trail. */
+export function folderVisibility(root: DocFolder, path: string[]) {
+  return strictest(...(folderTrail(root, path) ?? []).map((f) => f.visibility));
+}
+
 /** A document's effective visibility: its own, narrowed by every folder above it. */
-export function effectiveVisibility(d: DocFile) {
-  const trail = folderTrail(d.folder) ?? [];
-  return strictest(d.visibility, ...trail.map((f) => f.visibility));
+export function effectiveVisibility(root: DocFolder, d: Pick<DocFile, "folder" | "visibility">) {
+  return strictest(d.visibility, folderVisibility(root, d.folder));
+}
+
+/** Every folder below the root, depth first, with its path — for folder pickers. */
+export function allFolders(root: DocFolder) {
+  const out: { path: string[]; titles: string[]; folder: DocFolder }[] = [];
+  const walk = (f: DocFolder, path: string[], titles: string[]) => {
+    for (const sub of f.folders ?? []) {
+      const p = [...path, sub.slug];
+      const t = [...titles, sub.title];
+      out.push({ path: p, titles: t, folder: sub });
+      walk(sub, p, t);
+    }
+  };
+  walk(root, [], []);
+  return out;
 }
 
 export type Resolved =
@@ -338,8 +381,8 @@ export type Resolved =
   | { kind: "document"; doc: DocFile; path: string[]; trail: DocFolder[]; visibility: Visibility };
 
 /** Resolve a URL path under /dokument to a folder or a document. */
-export function resolveDocumentPath(segments: string[]): Resolved | null {
-  const trail = folderTrail(segments);
+export function resolveDocumentPath({ root, docs }: DocArchive, segments: string[]): Resolved | null {
+  const trail = folderTrail(root, segments);
   if (trail) {
     return {
       kind: "folder",
@@ -350,34 +393,35 @@ export function resolveDocumentPath(segments: string[]): Resolved | null {
     };
   }
   const folderPath = segments.slice(0, -1);
-  const parentTrail = folderTrail(folderPath);
-  const d = parentTrail && documents.find((x) => x.slug === segments.at(-1) && samePath(x.folder, folderPath));
+  const parentTrail = folderTrail(root, folderPath);
+  const d = parentTrail && docs.find((x) => x.slug === segments.at(-1) && samePath(x.folder, folderPath));
   if (!parentTrail || !d) return null;
-  return { kind: "document", doc: d, path: segments, trail: parentTrail, visibility: effectiveVisibility(d) };
+  return { kind: "document", doc: d, path: segments, trail: parentTrail, visibility: effectiveVisibility(root, d) };
 }
 
+const newestFirst = (a: DocFile, b: DocFile) => b.uploaded.localeCompare(a.uploaded) || b.slug.localeCompare(a.slug);
+
 /** Documents directly in a folder, newest first. */
-export function documentsIn(path: string[]) {
-  return documents
-    .filter((d) => samePath(d.folder, path))
-    .sort((a, b) => b.uploaded.localeCompare(a.uploaded) || b.slug.localeCompare(a.slug));
+export function documentsIn(docs: DocFile[], path: string[]) {
+  return docs.filter((d) => samePath(d.folder, path)).sort(newestFirst);
 }
 
 /** Documents anywhere below `path` that the viewer may open. */
-export function visibleBelow(path: string[], viewer: Viewer) {
-  return documents.filter((d) => startsWith(d.folder, path) && canSee(effectiveVisibility(d), viewer));
+export function visibleBelow({ root, docs }: DocArchive, path: string[], viewer: Viewer) {
+  return docs.filter((d) => startsWith(d.folder, path) && canSee(effectiveVisibility(root, d), viewer));
 }
 
 /** What a viewer sees in a folder, plus how much more a member login would show. */
-export function listFolder(path: string[], viewer: Viewer) {
-  const trail = folderTrail(path);
+export function listFolder(archive: DocArchive, path: string[], viewer: Viewer) {
+  const { root, docs } = archive;
+  const trail = folderTrail(root, path);
   if (!trail) return null;
   const folder = trail[trail.length - 1];
   const folders = (folder.folders ?? [])
     .filter((f) => canSee(f.visibility, viewer))
     .map((f) => {
       const p = [...path, f.slug];
-      const inside = visibleBelow(p, viewer);
+      const inside = visibleBelow(archive, p, viewer);
       return {
         folder: f,
         path: p,
@@ -385,21 +429,25 @@ export function listFolder(path: string[], viewer: Viewer) {
         latest: inside.reduce<string | null>((m, d) => (!m || d.uploaded > m ? d.uploaded : m), null),
       };
     });
-  const docs = documentsIn(path).filter((d) => canSee(effectiveVisibility(d), viewer));
+  const inHere = documentsIn(docs, path).filter((d) => canSee(effectiveVisibility(root, d), viewer));
   // Guests get a hint about members-only material; nobody is told about the
   // board's own folder.
   const membersOnly =
     viewer === "guest"
-      ? documents.filter((d) => startsWith(d.folder, path) && effectiveVisibility(d) === "medlemmar").length
+      ? docs.filter((d) => startsWith(d.folder, path) && effectiveVisibility(root, d) === "medlemmar").length
       : 0;
-  return { folder, trail, folders, docs, membersOnly };
+  return { folder, trail, folders, docs: inHere, membersOnly };
 }
 
 /** The newest documents the viewer may open, across all folders. */
-export function latestDocuments(viewer: Viewer, limit = 4) {
-  return visibleBelow([], viewer)
-    .sort((a, b) => b.uploaded.localeCompare(a.uploaded))
-    .slice(0, limit);
+export function latestDocuments(archive: DocArchive, viewer: Viewer, limit = 4) {
+  return visibleBelow(archive, [], viewer).sort(newestFirst).slice(0, limit);
+}
+
+/** Whether a folder already holds a folder or document with this slug. */
+export function slugTaken({ root, docs }: { root: DocFolder; docs: DocRef[] }, path: string[], slug: string) {
+  const folder = folderTrail(root, path)?.at(-1);
+  return !!folder?.folders?.some((f) => f.slug === slug) || docs.some((d) => d.slug === slug && samePath(d.folder, path));
 }
 
 // ───────────────────────── Upload (admin) ─────────────────────────
@@ -423,7 +471,11 @@ export function longDateWithYear(iso: string) {
  * template and the meeting date: Styrelseprotokoll 2026-10-12 → "Styrelsemöte
  * 2026-10-12" in Protokoll › Styrelsemöte 2026. Missing folders are created.
  */
-export function protocolTarget(template: ProtocolTemplate, date: string) {
+export function protocolTarget(
+  { root, docs }: { root: DocFolder; docs: DocRef[] },
+  template: ProtocolTemplate,
+  date: string,
+) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
   const year = date.slice(0, 4);
   const long = longDateWithYear(date);
@@ -431,31 +483,40 @@ export function protocolTarget(template: ProtocolTemplate, date: string) {
     styrelse: {
       sub: { slug: `styrelsemote-${year}`, title: `Styrelsemöte ${year}` },
       title: `Styrelsemöte ${date}`,
+      fileName: `Protokoll styrelsemöte ${date}.pdf`,
       newsTitle: `Nytt protokoll: styrelsemöte ${long}`,
       createNote: "årsmappen skapas automatiskt",
     },
     arsmote: {
       sub: { slug: "arsmote", title: "Årsmöte" },
       title: `Årsmöte ${date}`,
+      fileName: `Protokoll årsmöte ${date}.pdf`,
       newsTitle: `Nytt protokoll: årsmöte ${long}`,
-      createNote: null,
+      createNote: "mappen skapas automatiskt",
     },
     ovrigt: {
       sub: { slug: "ovrigt", title: "Övrigt" },
       title: `Protokoll ${date}`,
+      fileName: `Protokoll ${date}.pdf`,
       newsTitle: `Nytt protokoll: möte ${long}`,
       createNote: "mappen skapas automatiskt",
     },
   }[template];
-  const folder = ["protokoll", t.sub.slug];
+  const top = { slug: "protokoll", title: "Protokoll" };
+  const folder = [top.slug, t.sub.slug];
+  // Existing folders keep the title the board gave them.
+  const trail = folderTrail(root, folder);
+  const topTitle = root.folders?.find((f) => f.slug === top.slug)?.title ?? top.title;
   return {
     folder,
-    folderTitles: ["Protokoll", t.sub.title],
+    folderTitles: trail ? trail.slice(1).map((f) => f.title) : [topTitle, t.sub.title],
     title: t.title,
     slug: date,
+    fileName: t.fileName,
     href: docHref({ folder, slug: date }),
     newsTitle: t.newsTitle,
-    createNote: t.createNote,
-    exists: documents.some((d) => d.slug === date && samePath(d.folder, folder)),
+    /** Shown when the folder doesn't exist yet. */
+    createNote: trail ? null : t.createNote,
+    exists: docs.some((d) => d.slug === date && samePath(d.folder, folder)),
   };
 }
