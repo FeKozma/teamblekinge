@@ -4,7 +4,9 @@ Klickbar demo av den nya hemsidan för Team Blekinge Löparförening, byggd efte
 skisserna i `TeamBlekingeLF–nyhemsida.html` (skärmdumpar i `docs/design/`).
 
 **Stack:** Next.js 16 (App Router) · React 19 · Tailwind 4 · TypeScript. Ingen databas än –
-innehållet ligger i `src/lib/data/`, inloggningen är låtsas och klick sparas i webbläsaren.
+grundinnehållet ligger i `src/lib/data/`, inloggningen är låtsas och klick sparas i webbläsaren.
+Det styrelsen ändrar i administrationen sparas på servern i en egen sandlåda per besökare
+(`.data/sandboxes/`): ingen annan ser ändringarna, och de försvinner när webbläsaren stängs.
 
 ```bash
 npm install
@@ -19,8 +21,14 @@ npm run dev          # http://localhost:3000
   *Logga in med passkey*. Du blir då ”Ingrid” och ser medlemshemmet, Klubbflödet,
   medlemsnyheter med anmälan och Dokument.
 - **Som styrelse:** *Logga in som styrelseledamot* på inloggningssidan (eller en e-post som
-  börjar på `stina`) → Administration › Dokument med uppladdning och avisering.
-- *Återställ demons klick* i sidfoten nollställer gillningar, anmälningar och kommentarer.
+  börjar på `stina`) → *Administration* i kontomenyn. Där ändras nyheter, kalendern, dokument
+  (riktiga PDF:er), Aktuellt-bandet, alla sidtexter, föreningsuppgifter, styrelse, historia,
+  vanliga frågor, sponsorer, träning och loppen. På webbplatsen finns knappen *Ändra den här
+  sidan*.
+- *Så fungerar demon* (`/om-demon`) beskriver vad som händer på riktigt och vad demon gör i
+  stället.
+- *Återställ demons klick* i sidfoten nollställer gillningar, anmälningar och kommentarer;
+  *Återställ allt innehåll* i administrationen nollställer dina ändringar.
 
 ## Rörelse
 
@@ -41,10 +49,12 @@ se `docs/content-from-old-site.md`. Medlemmar, kommentarer, inlägg och terminsp
 
 ## Vägen till skarp drift
 
-1. Databas (Postgres + Prisma, som Startskottet) för nyheter, flöde, kalender, dokument.
+1. Databas (Postgres + Prisma, som Startskottet) i stället för `src/lib/content/store.ts`
+   (samma läs/skriv-gränssnitt, ingen sandlåda per besökare) och fillagring för uppladdningar.
 2. Inloggning med Auth.js: e-postlänk + passkeys, inbjudan av befintliga medlemmar.
-3. Admin för nyheter, kalender, terminsplan, sponsorer och moderering av flödet.
-4. Driftsätt: `docker compose up -d --build`, sedan `../tunnel/add-subdomain.sh teamblekinge 3016`.
+3. Det som återstår i administrationen: resultat, anmälningslistor och moderering av flödet.
+4. Mejlutskick (nyheter per kategori, inställda pass, påminnelser).
+5. Driftsätt: `docker compose up -d --build`, sedan `../tunnel/add-subdomain.sh teamblekinge 3016`.
 
 ## Licens
 
