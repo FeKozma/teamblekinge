@@ -36,11 +36,25 @@ async function currentSandbox(): Promise<Sandbox | null> {
   return id && /^[a-f0-9]{24}$/.test(id) ? sandboxAt(id) : null;
 }
 
+// One sandbox per request, even when an action writes several collections at
+// once (Promise.all): keyed by the request's cookie store.
+const creating = new WeakMap<object, Promise<Sandbox>>();
+
 /**
  * This visitor's sandbox, created on first write. Only callable where cookies
  * can be set (server actions, route handlers).
  */
 async function writableSandbox(): Promise<Sandbox> {
+  const jar = await cookies();
+  let sb = creating.get(jar);
+  if (!sb) {
+    sb = openSandbox();
+    creating.set(jar, sb);
+  }
+  return sb;
+}
+
+async function openSandbox(): Promise<Sandbox> {
   const existing = await currentSandbox();
   if (existing) {
     await mkdir(existing.dir, { recursive: true });

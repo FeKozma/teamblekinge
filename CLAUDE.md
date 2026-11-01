@@ -91,7 +91,7 @@ visitor reads should be hard-coded in a page.
   people …) may just show `toast("Demoläget …", "info")` — but the UI must show how the real
   flow would work.
 - One module per area: `lib/content/news.ts`, `events.ts`, `club.ts` (club facts, board, roles,
-  FAQs, partners), `training.ts`, `races.ts`, `pages.ts`. Getters are async; server components
+  FAQs, partners, history), `training.ts`, `races.ts`, `pages.ts`. Getters are async; server components
   `await` them and pass data down as props. Client components never import seed values.
 - **Page texts**: each fixed page lists its texts in `lib/data/pages/<page>.ts` (key, label a
   layperson understands, default text, `long` for paragraphs) grouped as the page shows them.
