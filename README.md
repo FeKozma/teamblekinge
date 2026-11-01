@@ -45,3 +45,8 @@ se `docs/content-from-old-site.md`. Medlemmar, kommentarer, inlägg och terminsp
 2. Inloggning med Auth.js: e-postlänk + passkeys, inbjudan av befintliga medlemmar.
 3. Admin för nyheter, kalender, terminsplan, sponsorer och moderering av flödet.
 4. Driftsätt: `docker compose up -d --build`, sedan `../tunnel/add-subdomain.sh teamblekinge 3016`.
+
+## Licens
+
+Källkoden är MIT-licensierad – se [LICENSE](LICENSE). Föreningens namn, logotyper och bilder
+samt partnerlogotyperna i `public/img/` tillhör respektive ägare och omfattas inte av licensen.
