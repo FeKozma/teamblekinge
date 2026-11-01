@@ -220,3 +220,56 @@ export const partners: Partner[] = [
   { name: "Rosenquist Ljud & Bild", logo: "/img/partners/rosenquist-ljud-bild.png" },
   { name: "Franssons Maskiner", logo: "/img/partners/franssons-maskiner.jpg" },
 ];
+
+/** A point on the history timeline on /foreningen. */
+export type Milestone = {
+  /** As written on the card: "Hösten 1989", "18 januari 1992". */
+  when: string;
+  /** Short label on the track: "1989". */
+  mark: string;
+  title: string;
+  text: string;
+  /** Not happened yet — drawn dashed with a "Planeras" tag. */
+  planned?: boolean;
+};
+
+// From the club's own history page and race records (docs/content-from-old-site.md).
+export const history: Milestone[] = [
+  {
+    when: "Hösten 1989",
+    mark: "1989",
+    title: "Idén föds i Berlin",
+    text: "På en resa till Berlin Marathon föds idén till föreningen.",
+  },
+  {
+    when: "18 januari 1992",
+    mark: "1992",
+    title: "Föreningen bildas",
+    text: "Officiellt bildas föreningen vid ett möte i Sjöarp, Bräkne-Hoby. Förste ordförande blir Bengt-Åke Svensson.",
+  },
+  {
+    when: "1996",
+    mark: "1996",
+    title: "Banrekord på Kustmaran",
+    text: "Juris Treimanis, Högby IF, springer maraton på 2:35:37 – fortfarande banrekord.",
+  },
+  {
+    when: "2013",
+    mark: "2013",
+    title: "Petra Skiöld sätter 2:55:42",
+    text: "Petra Skiöld, Ryssbergets IK, sätter banrekord på Kustmarans maraton.",
+  },
+  {
+    when: "2026",
+    mark: "2026",
+    title: "Drygt 200 medlemmar – och Veteran-SM",
+    text: "Föreningen har drygt 200 medlemmar. Veteran-SM i halvmaraton avgörs i samband med Jämjöhalvan den 7 november.",
+  },
+  {
+    when: "3 juli 2027",
+    mark: "2027",
+    title: "VSM i maraton",
+    text: "Veteran-SM i maraton planeras på Kustmaran.",
+    planned: true,
+  },
+];
